@@ -1,0 +1,271 @@
+import { useState } from "react";
+import Layout from "../../components/Layout";
+import api from "../../api/axios";
+
+export default function SubmitProof() {
+  const [file, setFile] = useState(null);
+  const [note, setNote] = useState("");
+  const [coords, setCoords] = useState(null);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [loading, setLoading] = useState(false);
+
+  function captureLocation() {
+    setMessage("");
+    if (!navigator.geolocation) {
+      setMessage("Geolocation is not supported by your browser");
+      setMessageType("error");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setMessage("Location captured successfully!");
+        setMessageType("success");
+      },
+      (error) => {
+        setMessage("Unable to retrieve your location. Please enable location services.");
+        setMessageType("error");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage("");
+
+    if (!file) {
+      setMessage("Please select a proof file (image or video)");
+      setMessageType("error");
+      return;
+    }
+
+    if (!coords) {
+      setMessage("Please capture your location before submitting");
+      setMessageType("error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("proof", file);
+    formData.append("latitude", String(coords.latitude));
+    formData.append("longitude", String(coords.longitude));
+    formData.append("note", note);
+
+    setLoading(true);
+    try {
+      const response = await api.post("/user/submissions", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      
+      setMessage(response.data.message || "Submission successful!");
+      setMessageType("success");
+      
+      // Reset form
+      setFile(null);
+      setNote("");
+      setCoords(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById("proof-file");
+      if (fileInput) fileInput.value = "";
+      
+    } catch (error) {
+      const data = error?.response?.data;
+      if (data?.message && data?.next_available_date) {
+        setMessage(
+          `${data.message} Next available date: ${new Date(
+            data.next_available_date
+          ).toLocaleString()}`
+        );
+      } else {
+        setMessage(data?.message || "Submission failed. Please try again.");
+      }
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const previewUrl = file ? URL.createObjectURL(file) : null;
+  const isVideo = file?.type?.startsWith("video/");
+
+  return (
+    <Layout role="user">
+      <div className="top-bar">
+        <div className="top-bar-content">
+          <div>
+            <h1 className="page-title">Submit Proof</h1>
+            <p className="page-subtitle">Upload photo or video proof of your poster placement</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-area">
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <form onSubmit={handleSubmit}>
+            <div className="card mb-6">
+              <div className="card-header">
+                <h3 className="card-title">Submission Form</h3>
+                <p className="card-description">Complete all required fields to submit your proof</p>
+              </div>
+              
+              <div className="card-body">
+                {/* Location Section */}
+                <div className="mb-6" style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-light)' }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span style={{ fontSize: '1.5rem' }}>📍</span>
+                    <div>
+                      <h4 className="font-semibold text-lg">Location</h4>
+                      <p className="text-sm text-muted">Capture your current GPS coordinates</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-block"
+                    onClick={captureLocation}
+                  >
+                    📍 Capture My Location
+                  </button>
+
+                  {coords && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-center mb-3">
+                        <span className="badge badge-success">✓ Location Captured</span>
+                      </div>
+                      <div className="card" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                        <div className="card-body">
+                          <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div>
+                              <div className="text-sm font-semibold text-muted mb-1">Latitude</div>
+                              <div className="font-semibold">{coords.latitude.toFixed(6)}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-muted mb-1">Longitude</div>
+                              <div className="font-semibold">{coords.longitude.toFixed(6)}</div>
+                            </div>
+                          </div>
+                          <a
+                            href={`https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-ghost btn-sm btn-block"
+                          >
+                            🗺️ View on Google Maps
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* File Upload Section */}
+                <div className="mb-6" style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-light)' }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span style={{ fontSize: '1.5rem' }}>📤</span>
+                    <div>
+                      <h4 className="font-semibold text-lg">Upload Proof</h4>
+                      <p className="text-sm text-muted">Select one image or video file</p>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <input
+                      id="proof-file"
+                      className="form-input"
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
+                    <p className="form-help">Accepted formats: JPG, PNG, MP4, MOV</p>
+                  </div>
+
+                  {previewUrl && (
+                    <div className="mt-4">
+                      <div className="text-sm font-semibold mb-2">Preview</div>
+                      <div className="preview-container">
+                        {isVideo ? (
+                          <video controls>
+                            <source src={previewUrl} />
+                          </video>
+                        ) : (
+                          <img src={previewUrl} alt="Preview" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Optional Note Section */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span style={{ fontSize: '1.5rem' }}>📝</span>
+                    <div>
+                      <h4 className="font-semibold text-lg">Additional Notes</h4>
+                      <p className="text-sm text-muted">Optional details about this submission</p>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <textarea
+                      className="form-textarea"
+                      rows={4}
+                      placeholder="Add any additional information about this poster placement..."
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-footer">
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-lg btn-block"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      🚀 Submit Proof
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Message Display */}
+            {message && (
+              <div className={`alert alert-${messageType}`}>
+                <span className="alert-icon">
+                  {messageType === "success" ? "✓" : messageType === "error" ? "⚠️" : "ℹ️"}
+                </span>
+                <div className="alert-content">{message}</div>
+              </div>
+            )}
+
+            {/* Important Notice */}
+            <div className="alert alert-warning">
+              <span className="alert-icon">⏱️</span>
+              <div className="alert-content">
+                <div className="alert-title">Cooldown Policy</div>
+                The same location (within 20 meters) can only be updated once every 3 months. 
+                If a location was recently updated, you'll see the next available date.
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Layout>
+  );
+}
