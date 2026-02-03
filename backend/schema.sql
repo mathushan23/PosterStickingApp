@@ -1,10 +1,5 @@
-/*step1 CREATE DATABASE poster_sticking;*/
-/*step2  mysql -u root -p poster_sticking < schema.sql */
-
-
-
 -- ===============================
--- Database: poster_sticking
+-- Database: poster_sticking_App
 -- ===============================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -24,7 +19,7 @@ CREATE TABLE users (
 ) ENGINE=InnoDB;
 
 -- ===============================
--- SPOTS TABLE (LOCATIONS)
+-- SPOTS TABLE
 -- ===============================
 CREATE TABLE spots (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -35,12 +30,11 @@ CREATE TABLE spots (
   last_stuck_by INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  CONSTRAINT fk_spots_user
+  CONSTRAINT fk_spots_last_user
     FOREIGN KEY (last_stuck_by) REFERENCES users(id)
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Index for location & cooldown checks
 CREATE INDEX idx_spots_lat_lng ON spots(latitude, longitude);
 CREATE INDEX idx_spots_last_stuck ON spots(last_stuck_at);
 
@@ -71,16 +65,21 @@ CREATE TABLE submissions (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_submissions_user_date ON submissions(user_id, submitted_at);
+CREATE INDEX idx_submissions_user_date
+  ON submissions(user_id, submitted_at);
 
 -- ===============================
--- DEFAULT ADMIN USER (PASSWORD: admin123)
--- password_hash generated using bcrypt
+-- DEFAULT ADMIN USER
+-- Email    : admin@example.com
+-- Password : Admin@12345
+-- Name     : System Admin
+-- Password hashed using bcrypt (10 rounds)
 -- ===============================
-INSERT INTO users (name, email, password_hash, role)
+INSERT INTO users (name, email, password_hash, role, is_active)
 VALUES (
-  'Admin',
+  'System Admin',
   'admin@example.com',
-  '$2b$10$Qm9kY5kZySUdkGFUTkOcZOEy9FHn5Vf3L7hIwrKyYVJZZzKzbwQ6G',
-  'admin'
+  '$2b$10$1r8J8rXk0Kq9vYhGJp8M8e1v2m9ZKQeFzU9VJt8Yx7R5gJZ3XbZ8y',
+  'admin',
+  1
 );
