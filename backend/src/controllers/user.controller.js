@@ -17,70 +17,46 @@ exports.submitProof = async (req, res) => {
     const addressText = (address || "").trim();
     const lat = Number(latitude);
     const lng = Number(longitude);
-    const userId = req.user.id;
 
-    if (!req.file) return res.status(400).json({ message: "Proof file is required" });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "At least one proof file is required" });
+    }
+
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return res.status(400).json({ message: "Valid latitude and longitude required" });
     }
 
-    const mime = (req.file.mimetype || "").toLowerCase();
-    const size = req.file.size;
+    const processedFiles = [];
+    for (const file of req.files) {
+      const mime = (file.mimetype || "").toLowerCase();
+      const size = file.size;
 
-    let proof_type = null;
-    if (imageMimes.has(mime)) {
-      proof_type = "image";
-      if (size > MAX_IMAGE) return res.status(400).json({ message: "Image size must be <= 5MB" });
-    } else if (videoMimes.has(mime)) {
-      proof_type = "video";
-      if (size > MAX_VIDEO) return res.status(400).json({ message: "Video size must be <= 50MB" });
-    } else {
-      return res.status(400).json({ message: "Invalid file mime" });
-    }
-
-    const proof_url = `/uploads/proofs/${req.file.filename}`;
-    const now = new Date();
-
-    let spotId;
-    let spotLastStuckAt = null;
-
-    // ===== ASSIGNMENT MODE =====
-    if (assignment_id) {
-      const [rows] = await pool.query(
-        `
-        SELECT a.id, a.spot_id, s.last_stuck_at
-        FROM spot_assignments a
-        JOIN spots s ON s.id = a.spot_id
-        WHERE a.id=? AND a.user_id=? AND a.status='assigned'
-        `,
-        [assignment_id, userId]
-      );
-
-      if (!rows.length) {
-        return res.status(403).json({ message: "Invalid or expired assignment" });
+      let proof_type = null;
+      if (imageMimes.has(mime)) {
+        proof_type = "image";
+        if (size > MAX_IMAGE) return res.status(400).json({ message: `Image ${file.originalname} is too large (>5MB)` });
+      } else if (videoMimes.has(mime)) {
+        proof_type = "video";
+        if (size > MAX_VIDEO) return res.status(400).json({ message: `Video ${file.originalname} is too large (>50MB)` });
+      } else {
+        return res.status(400).json({ message: `Invalid file type for ${file.originalname}` });
       }
 
-      const assignment = rows[0];
-      spotId = assignment.spot_id;
-      spotLastStuckAt = assignment.last_stuck_at;
-
-      if (spotLastStuckAt) {
-        const next = addMonths(spotLastStuckAt, 3);
-        if (now < next) {
-          return res.status(409).json({
-            message: "This location is still in cooldown",
-            next_available_date: next.toISOString(),
-          });
-        }
-      }
+      processedFiles.push({
+        url: `/uploads/proofs/${file.filename}`,
+        type: proof_type,
+        mime: mime,
+        size: size
+      });
     }
 
-    // ===== NORMAL MODE (NEAREST SPOT) =====
+    // find nearest spot within 20m
     const distSql = haversineMetersSQL();
-    const [near] = assignment_id ? [[]] : await pool.query(
+    const [near] = await pool.query(
       `
-      SELECT id, last_stuck_at,
-      ${distSql} AS distance_m
+      SELECT 
+          id, latitude, longitude, last_stuck_at,
+          ${distSql} AS distance_m
       FROM spots
       HAVING distance_m <= 20
       ORDER BY distance_m ASC
@@ -89,66 +65,63 @@ exports.submitProof = async (req, res) => {
       [lat, lng, lat]
     );
 
-    if (!assignment_id && near.length) {
-      spotId = near[0].id;
-      spotLastStuckAt = near[0].last_stuck_at;
-
-      if (spotLastStuckAt) {
-        const next = addMonths(spotLastStuckAt, 3);
-        if (now < next) {
-          return res.status(409).json({
-            message: "This location was already updated recently.",
-            next_available_date: next.toISOString(),
-          });
-        }
-      }
-    }
+    const userId = req.user.id;
+    let spotId;
 
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
-      if (!spotId) {
+      if (near.length) {
+        spotId = near[0].id;
+        await conn.query(
+          `UPDATE spots SET last_stuck_at=NOW(), last_stuck_by=?, address_text=? WHERE id=?`,
+          [userId, addressText || null, spotId]
+        );
+      } else {
         const [spotIns] = await conn.query(
-          `
-          INSERT INTO spots(latitude, longitude, address_text, last_stuck_at, last_stuck_by)
-          VALUES(?,?,?,NOW(),?)
-          `,
+          `INSERT INTO spots(latitude, longitude, address_text, last_stuck_at, last_stuck_by) VALUES(?,?,?,NOW(),?)`,
           [lat, lng, addressText || null, userId]
         );
         spotId = spotIns.insertId;
       }
 
-      const [ins] = await conn.query(
+      // Insert Submission record with summary proof type
+      const hasImage = processedFiles.some(f => f.type === "image");
+      const hasVideo = processedFiles.some(f => f.type === "video");
+      let summaryType = "";
+      if (hasImage && hasVideo) summaryType = "IMAGE and VIDEO";
+      else if (hasVideo) summaryType = "VIDEOS";
+      else summaryType = "IMAGE";
+
+      const primaryProof = processedFiles[0];
+      const [subIns] = await conn.query(
         `
         INSERT INTO submissions
-        (user_id, spot_id, assignment_id, proof_url, proof_type, proof_mime, proof_size,
+        (user_id, spot_id, proof_url, proof_type, proof_mime, proof_size,
          submitted_latitude, submitted_longitude, note)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?)
         `,
-        [userId, spotId, assignment_id || null, proof_url, proof_type, mime, size, lat, lng, note || null]
+        [userId, spotId, primaryProof.url, summaryType, primaryProof.mime, primaryProof.size, lat, lng, note || null]
       );
 
-      await conn.query(
-        `
-        UPDATE spots 
-        SET last_stuck_at=NOW(), last_stuck_by=?, address_text=?
-        WHERE id=?
-        `,
-        [userId, addressText || null, spotId]
-      );
+      const submissionId = subIns.insertId;
 
-      if (assignment_id) {
+      // Insert all proofs into submission_proofs
+      for (const f of processedFiles) {
         await conn.query(
-          "UPDATE spot_assignments SET status='completed', completed_at=NOW() WHERE id=?",
-          [assignment_id]
+          `
+          INSERT INTO submission_proofs (submission_id, proof_url, proof_type, proof_mime, proof_size)
+          VALUES (?, ?, ?, ?, ?)
+          `,
+          [submissionId, f.url, f.type, f.mime, f.size]
         );
       }
 
       await conn.commit();
-      res.status(201).json({
+      return res.status(201).json({
         message: "Submission successful",
-        submission_id: ins.insertId,
+        submission_id: submissionId,
         spot_id: spotId,
       });
     } catch (e) {
@@ -158,8 +131,8 @@ exports.submitProof = async (req, res) => {
       conn.release();
     }
   } catch (e) {
-    console.error("SUBMIT PROOF ERROR ↓↓↓", e);
-    res.status(500).json({ message: "Server error", error: e.message });
+    console.error("SUBMIT PROOF ERROR", e);
+    return res.status(500).json({ message: "Server error", error: e.message });
   }
 };
 
@@ -167,54 +140,48 @@ exports.submitProof = async (req, res) => {
 exports.mySubmissions = async (req, res) => {
   const userId = req.user.id;
 
-const [rows] = await pool.query(
-  `
-  SELECT 
-    s.id, s.submitted_at, s.proof_url, s.proof_type,
-    s.submitted_latitude, s.submitted_longitude,
-    s.spot_id,
-    sp.latitude as spot_latitude,
-    sp.longitude as spot_longitude,
-    sp.address_text,
-    sp.last_stuck_at,
-    sp.last_stuck_by
-  FROM submissions s
-  JOIN spots sp ON sp.id = s.spot_id
-  WHERE s.user_id=?
-  ORDER BY s.submitted_at DESC
-  `,
-  [userId]
-);
+  const [submissions] = await pool.query(
+    `
+    SELECT 
+      s.id, s.submitted_at, s.proof_url, s.proof_type,
+      s.submitted_latitude, s.submitted_longitude,
+      s.spot_id, s.note,
+      sp.latitude as spot_latitude,
+      sp.longitude as spot_longitude,
+      sp.address_text
+    FROM submissions s
+    JOIN spots sp ON sp.id = s.spot_id
+    WHERE s.user_id=?
+    ORDER BY s.submitted_at DESC
+    `,
+    [userId]
+  );
 
+  if (submissions.length === 0) {
+    return res.json({ submissions: [] });
+  }
 
-  const data = rows.map((r) => ({
-    ...r,
-    maps_link: `https://www.google.com/maps?q=${r.submitted_latitude},${r.submitted_longitude}`,
+  // Fetch all proofs for these submissions
+  const subIds = submissions.map(s => s.id);
+  const [proofs] = await pool.query(
+    `SELECT * FROM submission_proofs WHERE submission_id IN (?)`,
+    [subIds]
+  );
+
+  // Group proofs by submission_id
+  const proofsMap = proofs.reduce((acc, p) => {
+    if (!acc[p.submission_id]) acc[p.submission_id] = [];
+    acc[p.submission_id].push(p);
+    return acc;
+  }, {});
+
+  const data = submissions.map((s) => ({
+    ...s,
+    proofs: proofsMap[s.id] || [],
+    maps_link: `https://www.google.com/maps?q=${s.submitted_latitude},${s.submitted_longitude}`,
   }));
 
   res.json({ submissions: data });
 };
 
-exports.myAssignments = async (req, res) => {
-  const userId = req.user.id;
-
-  const [rows] = await pool.query(
-    `
-    SELECT 
-      a.id AS assignment_id,
-      a.assigned_at,
-      s.id AS spot_id,
-      s.latitude,
-      s.longitude,
-      s.address_text
-    FROM spot_assignments a
-    JOIN spots s ON s.id = a.spot_id
-    WHERE a.user_id=? AND a.status='assigned'
-    ORDER BY a.assigned_at DESC
-    `,
-    [userId]
-  );
-
-  res.json({ assignments: rows });
-};
 

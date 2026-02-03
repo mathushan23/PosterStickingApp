@@ -3,7 +3,7 @@ import Layout from "../../components/Layout";
 import api from "../../api/axios";
 
 export default function SubmitProof() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [note, setNote] = useState("");
   const [coords, setCoords] = useState(null);
 
@@ -14,15 +14,23 @@ export default function SubmitProof() {
   const [messageType, setMessageType] = useState("info");
   const [loading, setLoading] = useState(false);
 
-  // ✅ preview URL + cleanup
-  const previewUrl = file ? URL.createObjectURL(file) : null;
-  const isVideo = file?.type?.startsWith("video/");
+  // ✅ preview URLs + cleanup
+  const [previews, setPreviews] = useState([]);
 
   useEffect(() => {
+    // Create preview URLs when files change
+    const urls = files.map(file => ({
+      url: URL.createObjectURL(file),
+      type: file.type,
+      name: file.name
+    }));
+    setPreviews(urls);
+
+    // Cleanup URLs on unmount or when files change
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      urls.forEach(p => URL.revokeObjectURL(p.url));
     };
-  }, [previewUrl]);
+  }, [files]);
 
   // ✅ NEW: reverse geocode with Nominatim (FREE, no key)
   async function reverseGeocode(lat, lng) {
@@ -90,8 +98,8 @@ export default function SubmitProof() {
     e.preventDefault();
     setMessage("");
 
-    if (!file) {
-      setMessage("Please select a proof file (image or video)");
+    if (files.length === 0) {
+      setMessage("Please select at least one proof file (image or video)");
       setMessageType("error");
       return;
     }
@@ -103,7 +111,11 @@ export default function SubmitProof() {
     }
 
     const formData = new FormData();
-    formData.append("proof", file);
+    // Append each file to the "proof" field
+    files.forEach(file => {
+      formData.append("proof", file);
+    });
+
     formData.append("latitude", String(coords.latitude));
     formData.append("longitude", String(coords.longitude));
     formData.append("note", note);
@@ -121,7 +133,7 @@ export default function SubmitProof() {
       setMessageType("success");
 
       // Reset form
-      setFile(null);
+      setFiles([]);
       setNote("");
       setCoords(null);
       setAddress("");
@@ -184,7 +196,7 @@ export default function SubmitProof() {
                     <div>
                       <h4 className="font-semibold text-lg">Upload Proof</h4>
                       <p className="text-sm text-muted">
-                        Select one image or video file
+                        Select one or more images or videos
                       </p>
                     </div>
                   </div>
@@ -195,28 +207,66 @@ export default function SubmitProof() {
                       className="form-input"
                       type="file"
                       accept="image/*,video/*"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      multiple
+                      onChange={(e) => setFiles(Array.from(e.target.files || []))}
                     />
                     <p className="form-help">
-                      Accepted formats: JPG, PNG, MP4, MOV
+                      Accepted formats: JPG, PNG, MP4, MOV. You can select multiple files.
                     </p>
                   </div>
 
-                  {previewUrl && (
+                  {previews.length > 0 && (
                     <div className="mt-4">
-                      <div className="text-sm font-semibold mb-2">Preview</div>
-                      <div className="preview-container">
-                        {isVideo ? (
-                          <video controls>
-                            <source src={previewUrl} />
-                          </video>
-                        ) : (
-                          <img src={previewUrl} alt="Preview" />
-                        )}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-semibold">Previews ({previews.length})</div>
+                        {(() => {
+                          const hasImage = previews.some(p => p.type.startsWith("image/"));
+                          const hasVideo = previews.some(p => p.type.startsWith("video/"));
+                          let typeLabel = "";
+                          let typeIcon = "";
+                          let badgeClass = "";
+
+                          if (hasImage && hasVideo) {
+                            typeLabel = "IMAGE and VIDEO";
+                            typeIcon = "📷🎬";
+                            badgeClass = "badge-info";
+                          } else if (hasVideo) {
+                            typeLabel = "VIDEOS";
+                            typeIcon = "🎬";
+                            badgeClass = "badge-secondary";
+                          } else {
+                            typeLabel = "IMAGE";
+                            typeIcon = "📷";
+                            badgeClass = "badge-info";
+                          }
+
+                          return (
+                            <span className={`badge ${badgeClass}`} style={{ fontSize: '0.75rem' }}>
+                              {typeIcon} {typeLabel}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {previews.map((p, idx) => (
+                          <div key={idx} className="preview-container" style={{ position: 'relative' }}>
+                            {p.type.startsWith("video/") ? (
+                              <video controls style={{ width: '100%', borderRadius: '8px' }}>
+                                <source src={p.url} />
+                              </video>
+                            ) : (
+                              <img src={p.url} alt={`Preview ${idx}`} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px' }} />
+                            )}
+                            <div style={{ fontSize: '10px', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.name}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
                 </div>
+
 
                 {/* Location Section */}
                 <div

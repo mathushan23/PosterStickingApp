@@ -151,13 +151,49 @@ export default function Submissions() {
                     </td>
 
                     <td>
-                      {s.proof_type === "image" ? (
-                        <img src={base + s.proof_url} alt="proof" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: "var(--radius)", border: "1px solid var(--border)" }} />
-                      ) : (
-                        <video controls style={{ width: 160, height: 90, borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
-                          <source src={base + s.proof_url} type="video/mp4" />
-                        </video>
-                      )}
+                      <div style={{ position: 'relative' }}>
+                        {s.proof_url?.match(/\.(mp4|mov|webm)$|video/i) ? (
+                          <video controls style={{ width: 160, height: 90, borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                            <source src={base + s.proof_url} />
+                          </video>
+                        ) : (
+                          <img src={base + s.proof_url} alt="proof" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: "var(--radius)", border: "1px solid var(--border)" }} />
+                        )}
+                        <div style={{ marginTop: '0.5rem' }}>
+                          {(() => {
+                            const pType = (s.proof_type || "").toUpperCase();
+                            const hasImage = Number(s.img_count) > 0 || pType.includes("IMAGE");
+                            const hasVideo = Number(s.vid_count) > 0 || pType.includes("VIDEO");
+
+                            let label = "";
+                            let icon = "";
+                            let badgeClass = "";
+
+                            if (hasImage && hasVideo) {
+                              label = "IMAGE and VIDEO";
+                              icon = "📷🎬 ";
+                              badgeClass = "badge-info";
+                            } else if (hasVideo) {
+                              label = "VIDEOS";
+                              icon = "🎬 ";
+                              badgeClass = "badge-secondary";
+                            } else {
+                              label = "IMAGE";
+                              icon = "📷 ";
+                              badgeClass = "badge-info";
+                            }
+
+                            return (
+                              <span
+                                className={`badge ${badgeClass}`}
+                                style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                {icon}{label}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </td>
 
                     <td>

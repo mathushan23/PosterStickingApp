@@ -43,24 +43,38 @@ export default function SubmissionDetails() {
 
         {!loading && s && (
           <>
-            {/* Proof Media */}
+            {/* Proof Media Gallery */}
             <div className="card mb-6">
               <div className="card-header">
-                <h3 className="card-title">Proof Media</h3>
-                <p className="card-description">{s.proof_type === "image" ? "Image" : "Video"} uploaded by {s.user_name}</p>
+                <h3 className="card-title">Proof Media ({s.proofs?.length || 0})</h3>
+                <p className="card-description">Media evidence uploaded by {s.user_name}</p>
               </div>
               <div className="card-body">
-                <div className="preview-container">
-                  {s.proof_type === "image" ? (
-                    <img src={base + s.proof_url} alt="proof" />
-                  ) : (
-                    <video controls>
-                      <source src={base + s.proof_url} />
-                    </video>
-                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(s.proofs && s.proofs.length > 0 ? s.proofs : [s]).map((proof, index) => (
+                    <div key={index} className="proof-item">
+                      <div className="text-xs font-semibold mb-2 text-muted uppercase tracking-wider">
+                        {proof.proof_type} #{index + 1}
+                      </div>
+                      <div className="preview-container" style={{ height: '300px' }}>
+                        {proof.proof_type === "image" ? (
+                          <img
+                            src={base + proof.proof_url}
+                            alt={`proof-${index}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f8f9fa', borderRadius: '8px' }}
+                          />
+                        ) : (
+                          <video controls style={{ width: '100%', height: '100%', borderRadius: '8px' }}>
+                            <source src={base + proof.proof_url} />
+                          </video>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
+
 
             {/* Details Grid */}
             <div className="grid grid-cols-2">
@@ -82,9 +96,38 @@ export default function SubmissionDetails() {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-muted mb-1">Proof Type</div>
-                      <span className={`badge ${s.proof_type === "image" ? "badge-info" : "badge-secondary"}`}>
-                        {s.proof_type === "image" ? "📷 Image" : "🎬 Video"}
-                      </span>
+                      {(() => {
+                        const proofs = s.proofs && s.proofs.length > 0 ? s.proofs : [s];
+                        const hasImage = proofs.some(p => String(p.proof_type).toLowerCase().includes("image"));
+                        const hasVideo = proofs.some(p => String(p.proof_type).toLowerCase().includes("video"));
+
+                        let displayType = "";
+                        let displayIcon = "";
+                        let badgeClass = "";
+
+                        if (hasImage && hasVideo) {
+                          displayType = "IMAGE and VIDEO";
+                          displayIcon = "📷🎬";
+                          badgeClass = "badge-info";
+                        } else if (hasVideo) {
+                          displayType = "VIDEOS";
+                          displayIcon = "🎬";
+                          badgeClass = "badge-secondary";
+                        } else {
+                          displayType = "IMAGE";
+                          displayIcon = "📷";
+                          badgeClass = "badge-info";
+                        }
+
+                        return (
+                          <span
+                            className={`badge ${badgeClass}`}
+                            style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            {displayIcon} {displayType}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -97,41 +140,41 @@ export default function SubmissionDetails() {
                 </div>
                 <div className="card-body">
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  <div>
-                    <div className="text-sm font-semibold text-muted mb-1">Submitted Location</div>
+                    <div>
+                      <div className="text-sm font-semibold text-muted mb-1">Submitted Location</div>
 
-                    {s.address_text ? (
-                      <>
-                        <div className="font-semibold" style={{ lineHeight: 1.4 }}>
-                          📍 {s.address_text}
-                        </div>
-                        <a
-                          href={`https://www.google.com/maps?q=${s.spot_latitude},${s.spot_longitude}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
-                        >
-                          🗺️ Open in Google Maps
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        <div className="font-semibold">
-                          {s.submitted_latitude}, {s.submitted_longitude}
-                        </div>
-                        {s.maps_link && (
+                      {s.address_text ? (
+                        <>
+                          <div className="font-semibold" style={{ lineHeight: 1.4 }}>
+                            📍 {s.address_text}
+                          </div>
                           <a
-                            href={s.maps_link}
+                            href={`https://www.google.com/maps?q=${s.spot_latitude},${s.spot_longitude}`}
                             target="_blank"
                             rel="noreferrer"
                             style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
                           >
                             🗺️ Open in Google Maps
                           </a>
-                        )}
-                      </>
-                    )}
-                  </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-semibold">
+                            {s.submitted_latitude}, {s.submitted_longitude}
+                          </div>
+                          {s.maps_link && (
+                            <a
+                              href={s.maps_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                            >
+                              🗺️ Open in Google Maps
+                            </a>
+                          )}
+                        </>
+                      )}
+                    </div>
 
                     <div>
                       <div className="text-sm font-semibold text-muted mb-1">Submitted Location Coordinates</div>

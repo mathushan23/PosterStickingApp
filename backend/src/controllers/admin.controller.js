@@ -78,11 +78,15 @@ exports.listSubmissions = async (req, res) => {
       sp.latitude as spot_latitude,
       sp.longitude as spot_longitude,
       sp.address_text,
-      sp.last_stuck_at
+      sp.last_stuck_at,
+      COALESCE(SUM(CASE WHEN pr.proof_type = 'image' THEN 1 ELSE 0 END), 0) as img_count,
+      COALESCE(SUM(CASE WHEN pr.proof_type = 'video' THEN 1 ELSE 0 END), 0) as vid_count
     FROM submissions s
     JOIN users u ON u.id = s.user_id
     JOIN spots sp ON sp.id = s.spot_id
+    LEFT JOIN submission_proofs pr ON pr.submission_id = s.id
     ${where}
+    GROUP BY s.id, u.id, sp.id
     ORDER BY s.submitted_at DESC
     `,
     params
@@ -126,9 +130,15 @@ exports.getSubmissionDetails = async (req, res) => {
   const sub = rows[0];
   if (!sub) return res.status(404).json({ message: "Not found" });
 
+  const [proofs] = await pool.query(
+    `SELECT * FROM submission_proofs WHERE submission_id = ?`,
+    [id]
+  );
+
   return res.json({
     submission: {
       ...sub,
+      proofs: proofs,
       next_available_date: sub.last_stuck_at
         ? addMonths(sub.last_stuck_at, 3).toISOString()
         : null,
@@ -136,6 +146,7 @@ exports.getSubmissionDetails = async (req, res) => {
     },
   });
 };
+
 
 
 // --------------------
@@ -186,10 +197,14 @@ exports.getSpotDetails = async (req, res) => {
     SELECT 
       s.id, s.proof_url, s.proof_type, s.submitted_at, 
       s.submitted_latitude, s.submitted_longitude,
-      u.name as user_name, u.email as user_email
+      u.name as user_name, u.email as user_email,
+      COALESCE(SUM(CASE WHEN pr.proof_type = 'image' THEN 1 ELSE 0 END), 0) as img_count,
+      COALESCE(SUM(CASE WHEN pr.proof_type = 'video' THEN 1 ELSE 0 END), 0) as vid_count
     FROM submissions s
     JOIN users u ON u.id = s.user_id
+    LEFT JOIN submission_proofs pr ON pr.submission_id = s.id
     WHERE s.spot_id=?
+    GROUP BY s.id, u.id
     ORDER BY s.submitted_at DESC
     `,
     [id]
