@@ -57,21 +57,16 @@ export default function Submissions() {
         <div className="grid grid-cols-2 mb-6">
           {/* Filters Card */}
           <div className="card">
-            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <h3 className="card-title">Filters</h3>
-                <p className="card-description">Search by user and date range</p>
-              </div>
-              <button className="btn btn-primary btn-sm" onClick={load} disabled={loading}>
-                {loading ? (<><span className="spinner"></span> …</>) : "Apply"}
-              </button>
+            <div className="card-header">
+              <h3 className="card-title">Filters</h3>
+              <p className="card-description">Search by user and date range</p>
             </div>
             <div className="card-body">
               <div className="form-group">
                 <label className="form-label">User</label>
                 <input className="form-input" placeholder="Name or email" value={filters.user} onChange={(e) => setFilters({ ...filters, user: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2">
+              <div className="grid grid-cols-2 mb-4">
                 <div className="form-group">
                   <label className="form-label">Start</label>
                   <input className="form-input" type="datetime-local" value={filters.start} onChange={(e) => setFilters({ ...filters, start: e.target.value })} />
@@ -82,8 +77,12 @@ export default function Submissions() {
                 </div>
               </div>
 
+              <button className="btn btn-primary w-full" onClick={load} disabled={loading}>
+                {loading ? (<><span className="spinner"></span> Applying...</>) : "Apply"}
+              </button>
+
               {errMsg && (
-                <div className="alert alert-error">
+                <div className="alert alert-error mt-4">
                   <span className="alert-icon">⚠️</span>
                   <div className="alert-content">{errMsg}</div>
                 </div>

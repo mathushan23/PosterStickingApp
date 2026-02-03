@@ -171,6 +171,53 @@ export default function SubmitProof() {
               </div>
 
               <div className="card-body">
+                {/* File Upload Section */}
+                <div
+                  className="mb-6"
+                  style={{
+                    paddingBottom: "1.5rem",
+                    borderBottom: "1px solid var(--border-light)",
+                  }}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <span style={{ fontSize: "1.5rem" }}>📤</span>
+                    <div>
+                      <h4 className="font-semibold text-lg">Upload Proof</h4>
+                      <p className="text-sm text-muted">
+                        Select one image or video file
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <input
+                      id="proof-file"
+                      className="form-input"
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
+                    <p className="form-help">
+                      Accepted formats: JPG, PNG, MP4, MOV
+                    </p>
+                  </div>
+
+                  {previewUrl && (
+                    <div className="mt-4">
+                      <div className="text-sm font-semibold mb-2">Preview</div>
+                      <div className="preview-container">
+                        {isVideo ? (
+                          <video controls>
+                            <source src={previewUrl} />
+                          </video>
+                        ) : (
+                          <img src={previewUrl} alt="Preview" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Location Section */}
                 <div
                   className="mb-6"
@@ -261,53 +308,6 @@ export default function SubmitProof() {
                   )}
                 </div>
 
-                {/* File Upload Section */}
-                <div
-                  className="mb-6"
-                  style={{
-                    paddingBottom: "1.5rem",
-                    borderBottom: "1px solid var(--border-light)",
-                  }}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <span style={{ fontSize: "1.5rem" }}>📤</span>
-                    <div>
-                      <h4 className="font-semibold text-lg">Upload Proof</h4>
-                      <p className="text-sm text-muted">
-                        Select one image or video file
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <input
-                      id="proof-file"
-                      className="form-input"
-                      type="file"
-                      accept="image/*,video/*"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    />
-                    <p className="form-help">
-                      Accepted formats: JPG, PNG, MP4, MOV
-                    </p>
-                  </div>
-
-                  {previewUrl && (
-                    <div className="mt-4">
-                      <div className="text-sm font-semibold mb-2">Preview</div>
-                      <div className="preview-container">
-                        {isVideo ? (
-                          <video controls>
-                            <source src={previewUrl} />
-                          </video>
-                        ) : (
-                          <img src={previewUrl} alt="Preview" />
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Optional Note Section */}
                 <div className="mb-4">
                   <div className="flex items-center gap-3 mb-3">
@@ -359,8 +359,8 @@ export default function SubmitProof() {
                   {messageType === "success"
                     ? "✓"
                     : messageType === "error"
-                    ? "⚠️"
-                    : "ℹ️"}
+                      ? "⚠️"
+                      : "ℹ️"}
                 </span>
                 <div className="alert-content">{message}</div>
               </div>
