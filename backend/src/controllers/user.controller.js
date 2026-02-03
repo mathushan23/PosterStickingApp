@@ -184,4 +184,27 @@ exports.mySubmissions = async (req, res) => {
   res.json({ submissions: data });
 };
 
+exports.myAssignments = async (req, res) => {
+  const userId = req.user.id;
+
+  const [rows] = await pool.query(
+    `
+    SELECT 
+      a.id AS assignment_id,
+      a.assigned_at,
+      s.id AS spot_id,
+      s.latitude,
+      s.longitude,
+      s.address_text
+    FROM spot_assignments a
+    JOIN spots s ON s.id = a.spot_id
+    WHERE a.user_id=? AND a.status='assigned'
+    ORDER BY a.assigned_at DESC
+    `,
+    [userId]
+  );
+
+  res.json({ assignments: rows });
+};
+
 
