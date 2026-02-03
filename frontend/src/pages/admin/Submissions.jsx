@@ -124,8 +124,8 @@ export default function Submissions() {
                 <th>User</th>
                 <th>Submitted</th>
                 <th>Proof</th>
-                <th>Submitted Location</th>
-                <th>Spot Location</th>
+                <th>Submitted Spot Address</th>
+                <th>Submitted Spot Cordinate</th>
                 <th>Last Stuck</th>
                 <th>Next Available</th>
                 <th></th>
@@ -162,14 +162,40 @@ export default function Submissions() {
                     </td>
 
                     <td>
-                      <div className="text-sm font-semibold">{s.submitted_latitude}, {s.submitted_longitude}</div>
-                      <a href={`https://www.google.com/maps?q=${s.submitted_latitude},${s.submitted_longitude}`} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}>
-                        🗺️ Open map
-                      </a>
+                      {s.address_text ? (
+                        <>
+                          <div className="text-sm font-semibold" style={{ maxWidth: 260, lineHeight: 1.3 }}>
+                            📍 {s.address_text}
+                          </div>
+                          <a
+                            href={`https://www.google.com/maps?q=${s.spot_latitude},${s.spot_longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                          >
+                            🗺️ Open map
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-sm font-semibold">
+                            {s.submitted_latitude}, {s.submitted_longitude}
+                          </div>
+                          <a
+                            href={`https://www.google.com/maps?q=${s.submitted_latitude},${s.submitted_longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                          >
+                            🗺️ Open map
+                          </a>
+                        </>
+                      )}
                     </td>
 
+
                     <td>
-                      <div className="text-sm font-semibold">{s.spot_latitude}, {s.spot_longitude}</div>
+                      <div className="text-sm font-semibold">Lat: {s.spot_latitude}<br />Lng: {s.spot_longitude}</div>
                     </td>
 
                     <td>

@@ -73,7 +73,10 @@ exports.listSubmissions = async (req, res) => {
       s.id, s.submitted_at, s.proof_url, s.proof_type,
       s.submitted_latitude, s.submitted_longitude,
       u.name as user_name, u.email as user_email,
-      sp.id as spot_id, sp.latitude as spot_latitude, sp.longitude as spot_longitude,
+      sp.id as spot_id,
+      sp.latitude as spot_latitude,
+      sp.longitude as spot_longitude,
+      sp.address_text,
       sp.last_stuck_at
     FROM submissions s
     JOIN users u ON u.id = s.user_id
@@ -86,11 +89,14 @@ exports.listSubmissions = async (req, res) => {
 
   const data = rows.map((r) => ({
     ...r,
-    next_available_date: r.last_stuck_at ? addMonths(r.last_stuck_at, 3).toISOString() : null,
+    next_available_date: r.last_stuck_at
+      ? addMonths(r.last_stuck_at, 3).toISOString()
+      : null,
   }));
 
   return res.json({ submissions: data });
 };
+
 
 exports.getSubmissionDetails = async (req, res) => {
   const id = Number(req.params.id);
@@ -99,13 +105,19 @@ exports.getSubmissionDetails = async (req, res) => {
     `
     SELECT 
       s.*, 
-      u.name as user_name, u.email as user_email,
-      sp.latitude as spot_latitude, sp.longitude as spot_longitude,
-      sp.last_stuck_at, sp.last_stuck_by
+      u.name as user_name, 
+      u.email as user_email,
+      sp.id as spot_id,
+      sp.latitude as spot_latitude, 
+      sp.longitude as spot_longitude,
+      sp.address_text,
+      sp.last_stuck_at, 
+      sp.last_stuck_by
     FROM submissions s
     JOIN users u ON u.id = s.user_id
     JOIN spots sp ON sp.id = s.spot_id
     WHERE s.id = ?
+    LIMIT 1
     `,
     [id]
   );
@@ -116,11 +128,14 @@ exports.getSubmissionDetails = async (req, res) => {
   return res.json({
     submission: {
       ...sub,
-      next_available_date: sub.last_stuck_at ? addMonths(sub.last_stuck_at, 3).toISOString() : null,
+      next_available_date: sub.last_stuck_at
+        ? addMonths(sub.last_stuck_at, 3).toISOString()
+        : null,
       maps_link: `https://www.google.com/maps?q=${sub.submitted_latitude},${sub.submitted_longitude}`,
     },
   });
 };
+
 
 // --------------------
 // Spots
@@ -129,7 +144,7 @@ exports.listSpots = async (req, res) => {
   const [rows] = await pool.query(
     `
     SELECT 
-      sp.id, sp.latitude, sp.longitude, sp.last_stuck_at,
+      sp.id, sp.latitude, sp.longitude, sp.address_text, sp.last_stuck_at,
       sp.last_stuck_by, u.name as last_stuck_by_name, u.email as last_stuck_by_email,
       (SELECT COUNT(*) FROM submissions s WHERE s.spot_id = sp.id) as submissions_count
     FROM spots sp
@@ -140,7 +155,9 @@ exports.listSpots = async (req, res) => {
 
   const data = rows.map((r) => ({
     ...r,
-    next_available_date: r.last_stuck_at ? addMonths(r.last_stuck_at, 3).toISOString() : null,
+    next_available_date: r.last_stuck_at
+      ? addMonths(r.last_stuck_at, 3).toISOString()
+      : null,
   }));
 
   return res.json({ spots: data });
@@ -155,6 +172,7 @@ exports.getSpotDetails = async (req, res) => {
     FROM spots sp
     LEFT JOIN users u ON u.id = sp.last_stuck_by
     WHERE sp.id=?
+    LIMIT 1
     `,
     [id]
   );
@@ -164,8 +182,10 @@ exports.getSpotDetails = async (req, res) => {
 
   const [subs] = await pool.query(
     `
-    SELECT s.id, s.proof_url, s.proof_type, s.submitted_at, s.submitted_latitude, s.submitted_longitude,
-           u.name as user_name, u.email as user_email
+    SELECT 
+      s.id, s.proof_url, s.proof_type, s.submitted_at, 
+      s.submitted_latitude, s.submitted_longitude,
+      u.name as user_name, u.email as user_email
     FROM submissions s
     JOIN users u ON u.id = s.user_id
     WHERE s.spot_id=?
@@ -177,9 +197,12 @@ exports.getSpotDetails = async (req, res) => {
   return res.json({
     spot: {
       ...spot,
-      next_available_date: spot.last_stuck_at ? addMonths(spot.last_stuck_at, 3).toISOString() : null,
+      next_available_date: spot.last_stuck_at
+        ? addMonths(spot.last_stuck_at, 3).toISOString()
+        : null,
       maps_link: `https://www.google.com/maps?q=${spot.latitude},${spot.longitude}`,
     },
     submissions: subs,
   });
 };
+

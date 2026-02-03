@@ -81,7 +81,7 @@ export default function Users() {
 
                 <div className="form-group">
                   <label className="form-label">Password</label>
-                  <input className="form-input" type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required placeholder="Temporary password" />
+                  <input className="form-input" type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required placeholder="password" />
                 </div>
 
                 <div className="form-group">

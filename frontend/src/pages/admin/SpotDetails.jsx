@@ -28,6 +28,10 @@ export default function SpotDetails() {
           <div>
             <h1 className="page-title">Spot Details</h1>
             <p className="page-subtitle">Full information for Spot #{id}</p>
+              {spot?.address_text && (
+                <p className="text-sm text-muted mt-1">📍 {spot.address_text}</p>
+              )}
+
           </div>
           <div className="top-bar-actions">
             <Link to="/admin/spots" className="btn btn-outline btn-sm">← Back to Spots</Link>
@@ -77,12 +81,25 @@ export default function SpotDetails() {
                 <div className="grid grid-cols-3">
                   <div>
                     <div className="text-sm font-semibold text-muted mb-1">Coordinates</div>
-                    <div className="font-semibold">{spot.latitude}, {spot.longitude}</div>
-                    {spot.maps_link && (
-                      <a href={spot.maps_link} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}>
-                        🗺️ Open in Google Maps
-                      </a>
-                    )}
+                      <div className="font-semibold">{spot.latitude}, {spot.longitude}</div>
+
+                      {spot.address_text && (
+                        <div className="text-sm text-muted" style={{ marginTop: "0.25rem" }}>
+                          📍 {spot.address_text}
+                        </div>
+                      )}
+
+                      {spot.maps_link && (
+                        <a
+                          href={spot.maps_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                        >
+                          🗺️ Open in Google Maps
+                        </a>
+                      )}
+
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-muted mb-1">Last Stuck</div>

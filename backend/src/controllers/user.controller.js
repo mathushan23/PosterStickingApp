@@ -9,9 +9,12 @@ const MAX_VIDEO = 50 * 1024 * 1024;
 const imageMimes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const videoMimes = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 
+
+
 exports.submitProof = async (req, res) => {
   try {
-    const { latitude, longitude, note } = req.body || {};
+    const { latitude, longitude, note, address } = req.body || {};
+    const addressText = (address || "").trim();
     const lat = Number(latitude);
     const lng = Number(longitude);
 
@@ -65,15 +68,15 @@ exports.submitProof = async (req, res) => {
       spotId = spot.id;
       spotLastStuckAt = spot.last_stuck_at;
 
-      if (spotLastStuckAt) {
-        const next = addMonths(spotLastStuckAt, 3);
-        if (now < next) {
-          return res.status(409).json({
-            message: "This location was already updated recently.",
-            next_available_date: next.toISOString(),
-          });
-        }
-      }
+      // if (spotLastStuckAt) {
+      //   const next = addMonths(spotLastStuckAt, 3);
+      //   if (now < next) {
+      //     return res.status(409).json({
+      //       message: "This location was already updated recently.",
+      //       next_available_date: next.toISOString(),
+      //     });
+      //   }
+      // }
 
       // allowed: insert submission + update spot
       const conn = await pool.getConnection();
@@ -91,9 +94,14 @@ exports.submitProof = async (req, res) => {
         );
 
         await conn.query(
-          `UPDATE spots SET last_stuck_at=NOW(), last_stuck_by=? WHERE id=?`,
-          [userId, spotId]
+          `
+          UPDATE spots 
+          SET last_stuck_at=NOW(), last_stuck_by=?, address_text=?
+          WHERE id=?
+          `,
+          [userId, addressText || null, spotId]
         );
+
 
         await conn.commit();
         return res.status(201).json({
@@ -114,9 +122,14 @@ exports.submitProof = async (req, res) => {
         await conn.beginTransaction();
 
         const [spotIns] = await conn.query(
-          `INSERT INTO spots(latitude, longitude, last_stuck_at, last_stuck_by) VALUES(?,?,NOW(),?)`,
-          [lat, lng, userId]
+          `
+          INSERT INTO spots(latitude, longitude, address_text, last_stuck_at, last_stuck_by)
+          VALUES(?,?,?,NOW(),?)
+          `,
+          [lat, lng, addressText || null, userId]
         );
+
+
         spotId = spotIns.insertId;
 
         const [subIns] = await conn.query(
@@ -162,7 +175,12 @@ exports.mySubmissions = async (req, res) => {
     SELECT 
       s.id, s.submitted_at, s.proof_url, s.proof_type,
       s.submitted_latitude, s.submitted_longitude,
-      s.spot_id, sp.latitude as spot_latitude, sp.longitude as spot_longitude
+      s.spot_id,
+      sp.latitude as spot_latitude,
+      sp.longitude as spot_longitude,
+      sp.address_text,
+      sp.last_stuck_at,
+      sp.last_stuck_by
     FROM submissions s
     JOIN spots sp ON sp.id = s.spot_id
     WHERE s.user_id=?
@@ -170,6 +188,7 @@ exports.mySubmissions = async (req, res) => {
     `,
     [userId]
   );
+
 
   const data = rows.map((r) => ({
     ...r,

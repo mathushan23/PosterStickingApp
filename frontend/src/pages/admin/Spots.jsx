@@ -78,9 +78,21 @@ export default function Spots() {
               {!loading && items.map((sp) => (
                 <tr key={sp.id}>
                   <td>
-                    <div className="font-bold" style={{ fontSize: "0.9375rem" }}>Spot #{sp.id}</div>
-                    <div className="text-muted text-sm">{sp.latitude}, {sp.longitude}</div>
+                    <div className="font-bold" style={{ fontSize: "0.9375rem" }}>
+                      Spot #{sp.id}
+                    </div>
+
+                    {sp.address_text ? (
+                      <div className="text-muted text-sm" style={{ maxWidth: "260px" }}>
+                        📍 {sp.address_text}
+                      </div>
+                    ) : (
+                      <div className="text-muted text-sm">
+                        {sp.latitude}, {sp.longitude}
+                      </div>
+                    )}
                   </td>
+
 
                   <td>
                     <div className="text-sm">{sp.last_stuck_at ? new Date(sp.last_stuck_at).toLocaleString() : "—"}</div>

@@ -127,6 +127,12 @@ export default function History() {
                         <span style={{ fontSize: "1.25rem" }}>{s.proof_type === "image" ? "📷" : "🎬"}</span>
                         <div>
                           <h3 className="card-title" style={{ marginBottom: 0 }}>Spot #{s.spot_id}</h3>
+                          {s.address_text && (
+                            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
+                              📍 {s.address_text}
+                            </div>
+                          )}
+
                           <p className="card-description">
                             Submission #{s.id} &middot; {new Date(s.submitted_at).toLocaleString()}
                           </p>

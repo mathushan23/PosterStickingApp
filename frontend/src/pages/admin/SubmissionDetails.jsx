@@ -97,17 +97,44 @@ export default function SubmissionDetails() {
                 </div>
                 <div className="card-body">
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    <div>
-                      <div className="text-sm font-semibold text-muted mb-1">Submitted Location</div>
-                      <div className="font-semibold">{s.submitted_latitude}, {s.submitted_longitude}</div>
-                      {s.maps_link && (
-                        <a href={s.maps_link} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}>
+                  <div>
+                    <div className="text-sm font-semibold text-muted mb-1">Submitted Location</div>
+
+                    {s.address_text ? (
+                      <>
+                        <div className="font-semibold" style={{ lineHeight: 1.4 }}>
+                          📍 {s.address_text}
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps?q=${s.spot_latitude},${s.spot_longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                        >
                           🗺️ Open in Google Maps
                         </a>
-                      )}
-                    </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-semibold">
+                          {s.submitted_latitude}, {s.submitted_longitude}
+                        </div>
+                        {s.maps_link && (
+                          <a
+                            href={s.maps_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                          >
+                            🗺️ Open in Google Maps
+                          </a>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                     <div>
-                      <div className="text-sm font-semibold text-muted mb-1">Spot Location</div>
+                      <div className="text-sm font-semibold text-muted mb-1">Submitted Location Coordinates</div>
                       <div className="font-semibold">{s.spot_latitude}, {s.spot_longitude}</div>
                       <a href={`https://www.google.com/maps?q=${s.spot_latitude},${s.spot_longitude}`} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}>
                         🗺️ Open in Google Maps
@@ -134,4 +161,4 @@ export default function SubmissionDetails() {
       </div>
     </Layout>
   );
-}
+}  
