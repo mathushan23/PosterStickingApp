@@ -17,5 +17,10 @@ router.get("/submissions/:id", adminCtrl.getSubmissionDetails);
 // ✅ Spots Viewer
 router.get("/spots", adminCtrl.listSpots);
 router.get("/spots/:id", adminCtrl.getSpotDetails);
+router.post("/spot-assignments",auth,requireRole("admin"),adminCtrl.assignSpot);
+router.post("/spots", adminCtrl.createSpot);
+router.post("/spots/check", adminCtrl.checkSpotAvailability);
+
+
 
 module.exports = router;

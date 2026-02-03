@@ -17,13 +17,16 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.get("/auth/me");
       setUser(res.data.user);
-    } catch {
-      localStorage.removeItem("token");
-      setUser(null);
+    } catch (e) {
+      if (e?.response?.status === 401) {
+        localStorage.removeItem("token");
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   }
+
 
   useEffect(() => {
     loadMe();

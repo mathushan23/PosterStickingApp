@@ -83,3 +83,26 @@ VALUES (
   'admin',
   1
 );
+
+CREATE TABLE spot_assignments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  spot_id INT NOT NULL,
+  user_id INT NOT NULL,
+  assigned_by INT NOT NULL,
+  status ENUM('assigned','completed','cancelled') DEFAULT 'assigned',
+  assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME NULL,
+
+  CONSTRAINT fk_assign_spot FOREIGN KEY (spot_id) REFERENCES spots(id),
+  CONSTRAINT fk_assign_user FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT fk_assign_admin FOREIGN KEY (assigned_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_assign_user_status ON spot_assignments(user_id, status);
+CREATE INDEX idx_assign_spot_status ON spot_assignments(spot_id, status);
+
+ALTER TABLE submissions
+ADD COLUMN assignment_id INT NULL,
+ADD CONSTRAINT fk_sub_assignment
+FOREIGN KEY (assignment_id) REFERENCES spot_assignments(id)
+ON DELETE SET NULL;

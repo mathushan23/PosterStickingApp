@@ -13,11 +13,14 @@ export default function Layout({ children, role = "user" }) {
     { icon: "👥", label: "Users", path: "/admin/users" },
     { icon: "📋", label: "Submissions", path: "/admin/submissions" },
     { icon: "📍", label: "Spots", path: "/admin/spots" },
+    { icon: "🧾", label: "Assignments", path: "/admin/assignments" },
+    { icon: "📜", label: "Assignment History", path: "/admin/assignment-history" },
   ];
 
   const userNav = [
     { icon: "🏠", label: "Dashboard", path: "/user/dashboard" },
     { icon: "📤", label: "Submit Proof", path: "/user/submit" },
+    { icon: "🗺️", label: "Assigned Tasks", path: "/user/assignments" },
     { icon: "📜", label: "My History", path: "/user/history" },
   ];
 

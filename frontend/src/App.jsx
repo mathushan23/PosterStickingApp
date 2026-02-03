@@ -14,6 +14,9 @@ import Submissions from "./pages/admin/Submissions";
 import SubmissionDetails from "./pages/admin/SubmissionDetails";
 import Spots from "./pages/admin/Spots";
 import SpotDetails from "./pages/admin/SpotDetails";
+import AssignWork from "./pages/admin/AssignWork";
+import AssignmentHistory from "./pages/admin/AssignmentHistory";
+import UserAssignments from "./pages/user/Assignments";
 
 export default function App() {
   return (
@@ -31,6 +34,11 @@ export default function App() {
       <Route path="/user/history" element={
         <ProtectedRoute role="user"><History /></ProtectedRoute>
       } />
+
+      <Route  path="/user/assignments"  element={
+        <ProtectedRoute role="user"><UserAssignments /></ProtectedRoute>
+      }/>
+
 
       {/* ADMIN */}
       <Route path="/admin/dashboard" element={
@@ -51,6 +59,17 @@ export default function App() {
       <Route path="/admin/spots/:id" element={
         <ProtectedRoute role="admin"><SpotDetails /></ProtectedRoute>
       } />
+
+      <Route path="/admin/assignments" element={
+        <ProtectedRoute role="admin"><AssignWork /></ProtectedRoute>
+      } />
+
+
+
+      <Route path="/admin/assignment-history" element={
+          <ProtectedRoute role="admin">  <AssignmentHistory /></ProtectedRoute>
+      }/>
+
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

@@ -1,6 +1,7 @@
 const pool = require("../db");
 const bcrypt = require("bcrypt");
 const { addMonths } = require("../utils/date");
+const { haversineMetersSQL } = require("../utils/haversineSql");
 
 // --------------------
 // Users
@@ -205,4 +206,133 @@ exports.getSpotDetails = async (req, res) => {
     submissions: subs,
   });
 };
+
+// --------------------
+// Create Spot (Admin)
+// --------------------
+exports.createSpot = async (req, res) => {
+  const { latitude, longitude, address_text } = req.body || {};
+
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({
+      message: "Valid latitude and longitude required",
+    });
+  }
+
+  const [ins] = await pool.query(
+    `
+    INSERT INTO spots (latitude, longitude, address_text)
+    VALUES (?,?,?)
+    `,
+    [lat, lng, (address_text || "").trim() || null]
+  );
+
+  const [rows] = await pool.query(
+    "SELECT * FROM spots WHERE id=?",
+    [ins.insertId]
+  );
+
+  return res.status(201).json({ spot: rows[0] });
+};
+
+// --------------------
+// Check spot availability (Admin)
+// --------------------
+
+
+  exports.checkSpotAvailability = async (req, res) => {
+    const { latitude, longitude } = req.body || {};
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ message: "Valid latitude & longitude required" });
+    }
+
+    const distSql = haversineMetersSQL();
+
+    const [rows] = await pool.query(
+      `
+      SELECT id, last_stuck_at,
+        ${distSql} AS distance_m
+      FROM spots
+      HAVING distance_m <= 20
+      ORDER BY distance_m ASC
+      LIMIT 1
+      `,
+      [lat, lng, lat]
+    );
+
+    if (!rows.length) {
+      return res.json({ available: true });
+    }
+
+    const spot = rows[0];
+
+    if (spot.last_stuck_at) {
+      const next = addMonths(spot.last_stuck_at, 3);
+      if (new Date() < next) {
+        return res.status(409).json({
+          available: false,
+          message: "This location is in cooldown period",
+          next_available_date: next.toISOString(),
+        });
+      }
+    }
+
+    return res.json({
+      available: true,
+      existing_spot_id: spot.id,
+    });
+  };
+
+
+exports.assignSpot = async (req, res) => {
+  const { spot_id, user_id } = req.body;
+  const adminId = req.user.id;
+
+  const [spotRows] = await pool.query(
+    "SELECT last_stuck_at FROM spots WHERE id=?",
+    [spot_id]
+  );
+  if (!spotRows.length) {
+    return res.status(404).json({ message: "Spot not found" });
+  }
+
+  const last = spotRows[0].last_stuck_at;
+  if (last) {
+    const next = addMonths(last, 3);
+    if (new Date() < next) {
+      return res.status(409).json({
+        message: "This spot is still in cooldown",
+        next_available_date: next.toISOString(),
+      });
+    }
+  }
+
+  // prevent duplicate active assignment
+  const [active] = await pool.query(
+    "SELECT id FROM spot_assignments WHERE spot_id=? AND status='assigned'",
+    [spot_id]
+  );
+  if (active.length) {
+    return res.status(409).json({
+      message: "This spot is already assigned to another user",
+    });
+  }
+
+  await pool.query(
+    `
+    INSERT INTO spot_assignments (spot_id, user_id, assigned_by)
+    VALUES (?,?,?)
+    `,
+    [spot_id, user_id, adminId]
+  );
+
+  res.json({ message: "Spot assigned successfully" });
+};
+
 

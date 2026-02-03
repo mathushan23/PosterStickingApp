@@ -8,5 +8,6 @@ router.use(auth, requireRole("user"));
 
 router.post("/submissions", upload.single("proof"), userCtrl.submitProof);
 router.get("/submissions", userCtrl.mySubmissions);
+router.get("/assignments", userCtrl.myAssignments);
 
 module.exports = router;
