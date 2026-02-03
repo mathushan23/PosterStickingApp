@@ -28,9 +28,9 @@ export default function SpotDetails() {
           <div>
             <h1 className="page-title">Spot Details</h1>
             <p className="page-subtitle">Full information for Spot #{id}</p>
-              {spot?.address_text && (
-                <p className="text-sm text-muted mt-1">📍 {spot.address_text}</p>
-              )}
+            {spot?.address_text && (
+              <p className="text-sm text-muted mt-1">📍 {spot.address_text}</p>
+            )}
 
           </div>
           <div className="top-bar-actions">
@@ -81,24 +81,24 @@ export default function SpotDetails() {
                 <div className="grid grid-cols-3">
                   <div>
                     <div className="text-sm font-semibold text-muted mb-1">Coordinates</div>
-                      <div className="font-semibold">{spot.latitude}, {spot.longitude}</div>
+                    <div className="font-semibold">{spot.latitude}, {spot.longitude}</div>
 
-                      {spot.address_text && (
-                        <div className="text-sm text-muted" style={{ marginTop: "0.25rem" }}>
-                          📍 {spot.address_text}
-                        </div>
-                      )}
+                    {spot.address_text && (
+                      <div className="text-sm text-muted" style={{ marginTop: "0.25rem" }}>
+                        📍 {spot.address_text}
+                      </div>
+                    )}
 
-                      {spot.maps_link && (
-                        <a
-                          href={spot.maps_link}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
-                        >
-                          🗺️ Open in Google Maps
-                        </a>
-                      )}
+                    {spot.maps_link && (
+                      <a
+                        href={spot.maps_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "var(--primary)", fontSize: "0.8125rem", fontWeight: 600 }}
+                      >
+                        🗺️ Open in Google Maps
+                      </a>
+                    )}
 
                   </div>
                   <div>
@@ -140,9 +140,37 @@ export default function SpotDetails() {
                           <div className="text-muted text-sm">{s.user_email} &middot; {new Date(s.submitted_at).toLocaleString()}</div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`badge ${s.proof_type === "image" ? "badge-info" : "badge-secondary"}`}>
-                            {s.proof_type === "image" ? "📷 Image" : "🎬 Video"}
-                          </span>
+                          {(() => {
+                            const hasImage = s.img_count > 0 || (s.proof_type || "").toUpperCase().includes("IMAGE");
+                            const hasVideo = s.vid_count > 0 || (s.proof_type || "").toUpperCase().includes("VIDEO");
+
+                            let label = "";
+                            let icon = "";
+                            let badgeClass = "";
+
+                            if (hasImage && hasVideo) {
+                              label = "IMAGE and VIDEO";
+                              icon = "📷🎬 ";
+                              badgeClass = "badge-info";
+                            } else if (hasVideo) {
+                              label = "VIDEOS";
+                              icon = "🎬 ";
+                              badgeClass = "badge-secondary";
+                            } else {
+                              label = "IMAGE";
+                              icon = "📷 ";
+                              badgeClass = "badge-info";
+                            }
+
+                            return (
+                              <span
+                                className={`badge ${badgeClass}`}
+                                style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                {icon}{label}
+                              </span>
+                            );
+                          })()}
                           <Link to={`/admin/submissions/${s.id}`} className="btn btn-outline btn-sm">View</Link>
                         </div>
                       </div>
@@ -150,12 +178,12 @@ export default function SpotDetails() {
                       {/* Sub body */}
                       <div style={{ padding: "1rem" }}>
                         <div className="preview-container">
-                          {s.proof_type === "image" ? (
-                            <img src={base + s.proof_url} alt="proof" />
-                          ) : (
+                          {s.proof_url?.match(/\.(mp4|mov|webm)$|video/i) ? (
                             <video controls>
                               <source src={base + s.proof_url} />
                             </video>
+                          ) : (
+                            <img src={base + s.proof_url} alt="proof" />
                           )}
                         </div>
 

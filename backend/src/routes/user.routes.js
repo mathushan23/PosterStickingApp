@@ -6,7 +6,7 @@ const { upload } = require("../upload/multer");
 
 router.use(auth, requireRole("user"));
 
-router.post("/submissions", upload.single("proof"), userCtrl.submitProof);
+router.post("/submissions", upload.array("proof", 10), userCtrl.submitProof);
 router.get("/submissions", userCtrl.mySubmissions);
 
 module.exports = router;

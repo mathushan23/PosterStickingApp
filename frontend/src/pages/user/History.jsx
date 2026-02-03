@@ -112,7 +112,28 @@ export default function History() {
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             {items.map((s) => {
               const isOpen = openId === s.id;
-              const mediaUrl = base + s.proof_url;
+
+              const proofs = s.proofs && s.proofs.length > 0 ? s.proofs : [s];
+              const hasImage = proofs.some(p => String(p.proof_type).toLowerCase().includes("image"));
+              const hasVideo = proofs.some(p => String(p.proof_type).toLowerCase().includes("video"));
+
+              let displayType = "";
+              let displayIcon = "";
+              let badgeClass = "";
+
+              if (hasImage && hasVideo) {
+                displayType = "IMAGE and VIDEO";
+                displayIcon = "📷🎬";
+                badgeClass = "badge-info";
+              } else if (hasVideo) {
+                displayType = "VIDEOS";
+                displayIcon = "🎬";
+                badgeClass = "badge-secondary";
+              } else {
+                displayType = "IMAGE";
+                displayIcon = "📷";
+                badgeClass = "badge-info";
+              }
 
               return (
                 <div key={s.id}>
@@ -124,7 +145,7 @@ export default function History() {
                       onClick={() => setOpenId(isOpen ? null : s.id)}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <span style={{ fontSize: "1.25rem" }}>{s.proof_type === "image" ? "📷" : "🎬"}</span>
+                        <span style={{ fontSize: "1.25rem" }}>{displayIcon}</span>
                         <div>
                           <h3 className="card-title" style={{ marginBottom: 0 }}>Spot #{s.spot_id}</h3>
                           {s.address_text && (
@@ -140,8 +161,11 @@ export default function History() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className={`badge ${s.proof_type === "image" ? "badge-info" : "badge-secondary"}`}>
-                          {s.proof_type === "image" ? "Image" : "Video"}
+                        <span
+                          className={`badge ${badgeClass}`}
+                          style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          {displayIcon} {displayType}
                         </span>
                         <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>
                           {isOpen ? "▲ Hide" : "▼ Expand"}
@@ -155,33 +179,49 @@ export default function History() {
                         {/* Proof Media card */}
                         <div style={{ borderTop: "1px solid var(--border-light)" }}>
                           <div className="card-header" style={{ background: "var(--bg)" }}>
-                            <h3 className="card-title">Proof Media</h3>
+                            <h3 className="card-title">Proof Media ({s.proofs?.length || 0})</h3>
                             <p className="card-description">
-                              {s.proof_type === "image" ? "Image" : "Video"} proof for this submission
+                              Media evidence uploaded for this submission
                             </p>
                           </div>
                           <div className="card-body">
-                            <div className="preview-wrapper">
-                              <div className="preview-container" style={{ marginTop: 0 }}>
-                                {s.proof_type === "image" ? (
-                                  <img src={mediaUrl} alt="proof" />
-                                ) : (
-                                  <video controls>
-                                    <source src={mediaUrl} type="video/mp4" />
-                                  </video>
-                                )}
-                              </div>
-                              {/* Fullscreen button */}
-                              <button
-                                className="fullscreen-btn"
-                                onClick={() => setModal({ url: mediaUrl, type: s.proof_type })}
-                                title="Open fullscreen"
-                              >
-                                ⛶
-                              </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {(s.proofs && s.proofs.length > 0 ? s.proofs : [s]).map((proof, index) => {
+                                const pUrl = base + proof.proof_url;
+                                return (
+                                  <div key={index} className="proof-item">
+                                    <div className="text-xs font-semibold mb-2 text-muted uppercase tracking-wider">
+                                      {proof.proof_type} #{index + 1}
+                                    </div>
+                                    <div className="preview-wrapper">
+                                      <div className="preview-container" style={{ marginTop: 0, height: '200px' }}>
+                                        {proof.proof_type === "image" ? (
+                                          <img src={pUrl} alt={`proof-${index}`} style={{ height: '100%', objectFit: 'contain' }} />
+                                        ) : (
+                                          <video controls style={{ height: '100%' }}>
+                                            <source src={pUrl} type="video/mp4" />
+                                          </video>
+                                        )}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="fullscreen-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setModal({ url: pUrl, type: proof.proof_type });
+                                        }}
+                                        title="Open fullscreen"
+                                      >
+                                        ⛶
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
+
 
                         {/* Two-column info grid — same as SubmissionDetails */}
                         <div className="card-body" style={{ paddingTop: 0 }}>
@@ -203,8 +243,11 @@ export default function History() {
                                   </div>
                                   <div>
                                     <div className="text-sm font-semibold text-muted mb-1">Proof Type</div>
-                                    <span className={`badge ${s.proof_type === "image" ? "badge-info" : "badge-secondary"}`}>
-                                      {s.proof_type === "image" ? "📷 Image" : "🎬 Video"}
+                                    <span
+                                      className={`badge ${badgeClass}`}
+                                      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                      {displayIcon} {displayType}
                                     </span>
                                   </div>
                                 </div>
