@@ -920,6 +920,8 @@ body {
 
   .sidebar.mobile-open {
     transform: translateX(0);
+    z-index: 1600;
+    /* Higher than Leaflet controls */
   }
 
   .mobile-toggle {
@@ -938,7 +940,8 @@ body {
     font-size: 1.5rem;
     cursor: pointer;
     box-shadow: var(--shadow-lg);
-    z-index: 1000;
+    z-index: 1700;
+    /* Highest to be accessible */
   }
 
   .sidebar-overlay {
@@ -946,7 +949,8 @@ body {
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 99;
+    z-index: 1500;
+    /* Behind sidebar but above map */
   }
 }
 
