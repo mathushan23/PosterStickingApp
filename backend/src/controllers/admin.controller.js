@@ -306,17 +306,39 @@ exports.createSpot = async (req, res) => {
 
 
 exports.assignSpot = async (req, res) => {
-  const { spot_id, user_id } = req.body;
+  const spot_id = Number(req.body?.spot_id);
+  const user_id = Number(req.body?.user_id);
   const adminId = req.user.id;
 
+  if (!Number.isInteger(spot_id) || !Number.isInteger(user_id)) {
+    return res.status(400).json({ message: "spot_id and user_id must be valid numbers" });
+  }
+
+  // ✅ user must exist + active + role=user
+  const [uRows] = await pool.query(
+    "SELECT id, role, is_active FROM users WHERE id=? LIMIT 1",
+    [user_id]
+  );
+  if (!uRows.length) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (!uRows[0].is_active) {
+    return res.status(409).json({ message: "User is inactive" });
+  }
+  if (uRows[0].role !== "user") {
+    return res.status(409).json({ message: "You can only assign spots to users (not admins)" });
+  }
+
+  // ✅ spot must exist
   const [spotRows] = await pool.query(
-    "SELECT last_stuck_at FROM spots WHERE id=?",
+    "SELECT last_stuck_at FROM spots WHERE id=? LIMIT 1",
     [spot_id]
   );
   if (!spotRows.length) {
     return res.status(404).json({ message: "Spot not found" });
   }
 
+  // ✅ cooldown check
   const last = spotRows[0].last_stuck_at;
   if (last) {
     const next = addMonths(last, 3);
@@ -328,26 +350,94 @@ exports.assignSpot = async (req, res) => {
     }
   }
 
-  // prevent duplicate active assignment
+  // ✅ prevent duplicate active assignment
   const [active] = await pool.query(
-    "SELECT id FROM spot_assignments WHERE spot_id=? AND status='assigned'",
+    "SELECT id FROM spot_assignments WHERE spot_id=? AND status='assigned' LIMIT 1",
     [spot_id]
   );
   if (active.length) {
-    return res.status(409).json({
-      message: "This spot is already assigned to another user",
-    });
+    return res.status(409).json({ message: "This spot is already assigned to another user" });
   }
 
   await pool.query(
-    `
-    INSERT INTO spot_assignments (spot_id, user_id, assigned_by)
-    VALUES (?,?,?)
-    `,
+    `INSERT INTO spot_assignments (spot_id, user_id, assigned_by) VALUES (?,?,?)`,
     [spot_id, user_id, adminId]
   );
 
-  res.json({ message: "Spot assigned successfully" });
+  return res.json({ message: "Spot assigned successfully" });
 };
+
+
+// --------------------
+// Spot Assignments (Admin)
+// --------------------
+exports.listSpotAssignments = async (req, res) => {
+  try {
+    const { status, q, from, to } = req.query;
+
+    let where = "WHERE 1=1";
+    const params = [];
+
+    if (status && ["assigned", "completed", "cancelled"].includes(status)) {
+      where += " AND a.status = ?";
+      params.push(status);
+    }
+
+    // search by user name/email or spot address
+    if (q && q.trim()) {
+      where += " AND (u.name LIKE ? OR u.email LIKE ? OR sp.address_text LIKE ?)";
+      params.push(`%${q.trim()}%`, `%${q.trim()}%`, `%${q.trim()}%`);
+    }
+
+    if (from) {
+      where += " AND a.assigned_at >= ?";
+      params.push(from);
+    }
+    if (to) {
+      where += " AND a.assigned_at <= ?";
+      params.push(to);
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        a.id,
+        a.spot_id,
+        a.user_id,
+        a.assigned_by,
+        a.status,
+        a.assigned_at,
+        a.completed_at,
+
+        u.name AS user_name,
+        u.email AS user_email,
+
+        ad.name AS assigned_by_name,
+        ad.email AS assigned_by_email,
+
+        sp.latitude,
+        sp.longitude,
+        sp.address_text,
+
+        -- how many submissions done for this assignment (optional)
+        (SELECT COUNT(*) FROM submissions s WHERE s.assignment_id = a.id) AS submission_count
+
+      FROM spot_assignments a
+      JOIN users u ON u.id = a.user_id
+      JOIN users ad ON ad.id = a.assigned_by
+      JOIN spots sp ON sp.id = a.spot_id
+      ${where}
+      ORDER BY a.assigned_at DESC
+      `,
+      params
+    );
+
+    return res.json({ assignments: rows });
+  } catch (e) {
+    console.error("LIST ASSIGNMENTS ERROR", e);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 

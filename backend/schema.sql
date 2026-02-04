@@ -106,3 +106,6 @@ ADD COLUMN assignment_id INT NULL,
 ADD CONSTRAINT fk_sub_assignment
 FOREIGN KEY (assignment_id) REFERENCES spot_assignments(id)
 ON DELETE SET NULL;
+
+CREATE INDEX idx_submissions_assignment ON submissions(assignment_id);
+

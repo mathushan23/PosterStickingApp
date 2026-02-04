@@ -20,6 +20,7 @@ router.get("/spots/:id", adminCtrl.getSpotDetails);
 router.post("/spot-assignments",auth,requireRole("admin"),adminCtrl.assignSpot);
 router.post("/spots", adminCtrl.createSpot);
 router.post("/spots/check", adminCtrl.checkSpotAvailability);
+router.get("/spot-assignments", adminCtrl.listSpotAssignments);
 
 
 
