@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import Layout from "../../components/Layout";
 
 export default function SpotDetails() {
@@ -17,6 +18,9 @@ export default function SpotDetails() {
       .then((res) => {
         setSpot(res.data.spot);
         setSubs(res.data.submissions || []);
+      })
+      .catch((err) => {
+        toast.error(err?.response?.data?.message || "Failed to load spot details");
       })
       .finally(() => setLoading(false));
   }, [id]);

@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../../components/Layout";
+import { toast } from "react-hot-toast";
 import api from "../../api/axios";
 
 const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
 
   const [users, setUsers] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [spots, setSpots] = useState([]);
 
   async function load() {
-    setErr("");
     setLoading(true);
     try {
       // ✅ Use existing endpoints (no new backend needed)
@@ -28,7 +27,7 @@ export default function AdminDashboard() {
       setSubmissions(sRes.data?.submissions || []);
       setSpots(spRes.data?.spots || []);
     } catch (e) {
-      setErr(e?.response?.data?.message || "Failed to load dashboard data");
+      toast.error(e?.response?.data?.message || "Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -92,7 +91,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="content-area">
-        {err && <div className="alert alert-error">{err}</div>}
+        {/* err removed */}
 
         {/* Stats Overview */}
         <div className="grid grid-cols-3 mb-8">

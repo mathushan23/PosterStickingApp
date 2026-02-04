@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
+import { toast } from "react-hot-toast";
 import { Link } from "react-router-dom";
 
 export default function UserAssignments() {
   const [items, setItems] = useState([]);
-  const [err, setErr] = useState("");
 
   async function load() {
-    setErr("");
     try {
       const res = await api.get("/user/assignments");
       setItems(res.data.assignments || []);
     } catch (e) {
-      setErr(e?.response?.data?.message || "Failed to load assignments");
+      toast.error(e?.response?.data?.message || "Failed to load assignments");
     }
   }
 
@@ -29,9 +28,9 @@ export default function UserAssignments() {
         { label: "Submit Proof", to: "/user/submit", variant: "primary" },
       ]}
     >
-      {err && <div className="alert alert-error">{err}</div>}
+      {/* err removed */}
 
-      {items.length === 0 && !err ? (
+      {items.length === 0 ? (
         <div className="card p-6 text-center text-muted">No assignments yet.</div>
       ) : (
         <div className="grid grid-cols-2">

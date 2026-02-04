@@ -1,21 +1,20 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
+import { toast } from "react-hot-toast";
 import api from "../../api/axios";
 import { Link } from "react-router-dom";
 
 export default function Spots() {
   const [items, setItems] = useState([]);
-  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    setErr("");
     setLoading(true);
     try {
       const res = await api.get("/admin/spots");
       setItems(res.data.spots || []);
     } catch (e) {
-      setErr(e?.response?.data?.message || "Failed to load spots");
+      toast.error(e?.response?.data?.message || "Failed to load spots");
     } finally {
       setLoading(false);
     }
@@ -38,12 +37,7 @@ export default function Spots() {
       </div>
 
       <div className="content-area">
-        {err && (
-          <div className="alert alert-error mb-6">
-            <span className="alert-icon">⚠️</span>
-            <div className="alert-content">{err}</div>
-          </div>
-        )}
+        {/* err removed */}
 
         <div className="table-container">
           <table className="table">

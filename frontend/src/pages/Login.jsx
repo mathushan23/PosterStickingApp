@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Login() {
@@ -25,7 +26,9 @@ export default function Login() {
         navigate("/user/dashboard");
       }
     } catch (err) {
-      setError(err?.response?.data?.message || "Login failed. Please check your credentials.");
+      const message = err?.response?.data?.message || "Login failed. Please check your credentials.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -77,12 +80,7 @@ export default function Login() {
             />
           </div>
 
-          {error && (
-            <div className="alert alert-error">
-              <span className="alert-icon">⚠️</span>
-              <div className="alert-content">{error}</div>
-            </div>
-          )}
+          {/* error box removed since we use toasts */}
 
           <button
             type="submit"

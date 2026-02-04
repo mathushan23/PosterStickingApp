@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
+import { toast } from "react-hot-toast";
 import Layout from "../../components/Layout";
 
 export default function Submissions() {
   const [items, setItems] = useState([]);
   const [filters, setFilters] = useState({ user: "", start: "", end: "" });
   const [loading, setLoading] = useState(false);
-  const [errMsg, setErrMsg] = useState("");
 
   const base = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
@@ -17,7 +17,6 @@ export default function Submissions() {
   }
 
   async function load() {
-    setErrMsg("");
     setLoading(true);
     try {
       const params = {};
@@ -29,7 +28,7 @@ export default function Submissions() {
       setItems(res.data.submissions || []);
     } catch (e) {
       console.error(e);
-      setErrMsg(e?.response?.data?.message || "Failed to load submissions");
+      toast.error(e?.response?.data?.message || "Failed to load submissions");
       setItems([]);
     } finally {
       setLoading(false);
@@ -81,12 +80,7 @@ export default function Submissions() {
                 {loading ? (<><span className="spinner"></span> Applying...</>) : "Apply"}
               </button>
 
-              {errMsg && (
-                <div className="alert alert-error mt-4">
-                  <span className="alert-icon">⚠️</span>
-                  <div className="alert-content">{errMsg}</div>
-                </div>
-              )}
+              {/* errMsg removed */}
             </div>
           </div>
 

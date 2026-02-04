@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Layout from "../../components/Layout";
+import { toast } from "react-hot-toast";
 import api from "../../api/axios";
 
 const MAX_ASSIGN_DISTANCE_M = 20; // change to 50 if you want looser
@@ -19,8 +20,8 @@ function haversineMeters(lat1, lon1, lat2, lon2) {
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -212,14 +213,12 @@ export default function SubmitProof() {
     setMessage("");
 
     if (files.length === 0) {
-      setMessage("Please select at least one proof file (image or video)");
-      setMessageType("error");
+      toast.error("Please select at least one proof file");
       return;
     }
 
     if (!coords) {
-      setMessage("Please capture your location before submitting");
-      setMessageType("error");
+      toast.error("Please capture your location first");
       return;
     }
 
@@ -264,11 +263,11 @@ export default function SubmitProof() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setMessage(response.data.message || "Submission successful!");
-      setMessageType("success");
+      toast.success(response.data.message || "Submission successful!");
+      setMessage("");
 
       setFiles([]);
-      setPreviews([]); 
+      setPreviews([]);
       setNote("");
       setCoords(null);
       setAddress("");
@@ -283,8 +282,8 @@ export default function SubmitProof() {
         const d = data?.distance_m;
         setMessage(
           `${data.message}\n\n` +
-            `Distance: ${d ? Math.round(d) + "m" : "—"} (allowed ${data.allowed_distance_m || MAX_ASSIGN_DISTANCE_M}m)\n` +
-            `Assigned: ${data.assigned_spot.address_text || ""}`
+          `Distance: ${d ? Math.round(d) + "m" : "—"} (allowed ${data.allowed_distance_m || MAX_ASSIGN_DISTANCE_M}m)\n` +
+          `Assigned: ${data.assigned_spot.address_text || ""}`
         );
         setMessageType("error");
         return;
@@ -297,9 +296,8 @@ export default function SubmitProof() {
           ).toLocaleString()}`
         );
       } else {
-        setMessage(data?.message || "Submission failed. Please try again.");
+        toast.error(data?.message || "Submission failed. Please try again.");
       }
-      setMessageType("error");
     } finally {
       setLoading(false);
     }
@@ -599,14 +597,7 @@ export default function SubmitProof() {
             </div>
 
             {/* Message Display */}
-            {message && (
-              <div className={`alert alert-${messageType}`} style={{ whiteSpace: "pre-line" }}>
-                <span className="alert-icon">
-                  {messageType === "success" ? "✓" : messageType === "error" ? "⚠️" : "ℹ️"}
-                </span>
-                <div className="alert-content">{message}</div>
-              </div>
-            )}
+            {/* Main message display removed in favor of toasts */}
 
             {/* Notice */}
             <div className="alert alert-warning">

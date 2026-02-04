@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Layout from "../../components/Layout";
+import { toast } from "react-hot-toast";
 import api from "../../api/axios";
 
 export default function History() {
   const [items, setItems] = useState([]);
-  const [err, setErr] = useState("");
   const [openId, setOpenId] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,13 +18,12 @@ export default function History() {
   );
 
   async function load() {
-    setErr("");
     setLoading(true);
     try {
       const res = await api.get("/user/submissions");
       setItems(res.data.submissions || []);
     } catch (e) {
-      setErr(e?.response?.data?.message || "Failed to load history");
+      toast.error(e?.response?.data?.message || "Failed to load history");
     } finally {
       setLoading(false);
     }
@@ -79,12 +78,7 @@ export default function History() {
 
       <div className="content-area" style={{ maxWidth: 900 }}>
         {/* Error */}
-        {err && (
-          <div className="alert alert-error">
-            <span className="alert-icon">⚠️</span>
-            <div className="alert-content">{err}</div>
-          </div>
-        )}
+        {/* Error removed */}
 
         {/* Loading */}
         {loading && (
@@ -97,7 +91,7 @@ export default function History() {
         )}
 
         {/* Empty */}
-        {!loading && items.length === 0 && !err && (
+        {!loading && items.length === 0 && (
           <div className="card">
             <div className="card-body" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
               <div style={{ fontSize: "2.75rem", marginBottom: "0.5rem" }}>📜</div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "../../components/Layout";
+import { toast } from "react-hot-toast";
 import api from "../../api/axios";
 
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
@@ -36,8 +37,6 @@ export default function AssignWork() {
   const [locLoading, setLocLoading] = useState(false);
 
   // ui
-  const [err, setErr] = useState("");
-  const [ok, setOk] = useState("");
   const [loading, setLoading] = useState(false);
 
   const userBoxRef = useRef(null);
@@ -147,12 +146,10 @@ export default function AssignWork() {
   }
 
   async function useCurrentLocation() {
-    setErr("");
-    setOk("");
     setLocLoading(true);
 
     if (!navigator.geolocation) {
-      setErr("Geolocation not supported in your browser.");
+      toast.error("Geolocation not supported in your browser.");
       setLocLoading(false);
       return;
     }
@@ -165,7 +162,7 @@ export default function AssignWork() {
         setLocLoading(false);
       },
       () => {
-        setErr("Unable to get current location. Please allow location permission.");
+        toast.error("Unable to get current location. Please allow location permission.");
         setLocLoading(false);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
@@ -173,15 +170,12 @@ export default function AssignWork() {
   }
 
   async function assignNow() {
-    setErr("");
-    setOk("");
-
     if (!selectedUser) {
-      setErr("Please select a user from the list.");
+      toast.error("Please select a user from the list.");
       return;
     }
     if (!location) {
-      setErr("Please select a location (search / map click / current location).");
+      toast.error("Please select a location.");
       return;
     }
 
@@ -211,7 +205,7 @@ export default function AssignWork() {
         user_id: selectedUser.id,
       });
 
-      setOk(`Assigned successfully to ${selectedUser.name}`);
+      toast.success(`Assigned successfully to ${selectedUser.name}`);
       setLocation(null);
       setSearchQ("");
       setSelectedUser(null);
@@ -220,13 +214,13 @@ export default function AssignWork() {
     } catch (e) {
       if (e?.response?.status === 409) {
         const next = e.response.data.next_available_date;
-        setErr(
+        toast.error(
           next
-            ? `This location is in cooldown. Available on ${new Date(next).toLocaleString()}`
+            ? `Location in cooldown. Available on ${new Date(next).toLocaleString()}`
             : e.response.data.message
         );
       } else {
-        setErr(e?.response?.data?.message || "Assignment failed");
+        toast.error(e?.response?.data?.message || "Assignment failed");
       }
     } finally {
       setLoading(false);
@@ -242,8 +236,7 @@ export default function AssignWork() {
       subtitle="Pick a user, choose a real location, then assign"
       userLabel="Admin"
     >
-      {err && <div className="alert alert-error">{err}</div>}
-      {ok && <div className="alert alert-success">{ok}</div>}
+      {/* alerts removed */}
 
       <div className="card p-6">
         {/* HEADER */}

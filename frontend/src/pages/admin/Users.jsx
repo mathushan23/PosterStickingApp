@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
+import { toast } from "react-hot-toast";
 import api from "../../api/axios";
 
 export default function Users() {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "user" });
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [msgType, setMsgType] = useState("success");
 
   async function load() {
     const res = await api.get("/admin/users");
@@ -18,30 +17,26 @@ export default function Users() {
 
   async function createUser(e) {
     e.preventDefault();
-    setMsg("");
     setLoading(true);
     try {
       await api.post("/admin/users", form);
-      setMsg("User created successfully");
-      setMsgType("success");
+      toast.success("User created successfully");
       setForm({ name: "", email: "", password: "", role: "user" });
       await load();
     } catch (e2) {
-      setMsg(e2?.response?.data?.message || "Create failed");
-      setMsgType("error");
+      toast.error(e2?.response?.data?.message || "Create failed");
     } finally {
       setLoading(false);
     }
   }
 
   async function toggleStatus(id, current) {
-    setMsg("");
     try {
       await api.patch(`/admin/users/${id}/status`, { is_active: !current });
+      toast.success(`User ${!current ? "activated" : "deactivated"} successfully`);
       await load();
     } catch (e) {
-      setMsg(e?.response?.data?.message || "Update failed");
-      setMsgType("error");
+      toast.error(e?.response?.data?.message || "Update failed");
     }
   }
 
@@ -96,12 +91,7 @@ export default function Users() {
                   {loading ? (<><span className="spinner"></span> Creating…</>) : "Create User"}
                 </button>
 
-                {msg && (
-                  <div className={`alert alert-${msgType} mt-4`}>
-                    <span className="alert-icon">{msgType === "success" ? "✓" : "⚠️"}</span>
-                    <div className="alert-content">{msg}</div>
-                  </div>
-                )}
+                {/* msg alert removed */}
               </form>
             </div>
           </div>
