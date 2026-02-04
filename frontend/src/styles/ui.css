@@ -1163,3 +1163,77 @@ body {
   max-width: 90vw;
   max-height: 85vh;
 }
+
+/* ===========================
+   MOBILE PATCH (Layout + Table)
+   Spot page
+   =========================== */
+
+/* 1) Stop the whole page from horizontal overflow */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 2) IMPORTANT for flex layouts (prevents child overflow) */
+.app-layout,
+.main-content,
+.content-area {
+  min-width: 0;
+}
+
+/* 3) Table: scroll INSIDE container (not overflow page) */
+.table-container {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  /* Leave your UI same, just make it usable on mobile */
+
+  /* top-bar spacing so button doesn't overlap */
+  .top-bar {
+    padding-right: 4.5rem;
+  }
+
+  /* Make table scrollable */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Force table to be wider than mobile so scrollbar appears */
+  .table {
+    width: max-content;     /* key: do not shrink into screen */
+    min-width: 820px;       /* adjust 760/820/900 based on your columns */
+  }
+
+  /* Keep most columns in one line */
+  .table th,
+  .table td {
+    white-space: nowrap;
+  }
+
+  /* Allow ONLY Spot column to wrap (address) */
+  .table td:first-child {
+    white-space: normal;
+    min-width: 260px;
+  }
+
+  /* Optional: limit address height */
+  .table td:first-child .text-muted.text-sm {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Mobile toggle smaller and not blocking too much */
+  .mobile-toggle {
+    width: 52px;
+    height: 52px;
+    right: 14px;
+    bottom: 14px;
+    font-size: 1.35rem;
+  }
+}
