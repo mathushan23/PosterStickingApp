@@ -57,28 +57,48 @@ export default function Login() {
             />
           </div>
 
-          <div className="form-group">
-            <div className="flex justify-between items-center mb-2">
-              <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem' }}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
-            <input
-              className="form-input"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
+<div className="form-group">
+  <label className="form-label">Password</label>
+
+  <div className="password-field">
+    <input
+      className="form-input"
+      type={showPassword ? "text" : "password"}
+      placeholder="Enter your password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+      autoComplete="current-password"
+    />
+
+    <button
+      type="button"
+      className="password-eye"
+      onClick={() => setShowPassword((p) => !p)}
+      aria-label={showPassword ? "Hide password" : "Show password"}
+    >
+      {/* eye icon (SVG) */}
+      {showPassword ? (
+        /* eye-off */
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M2.1 3.5 3.5 2.1 21.9 20.5 20.5 21.9l-2.2-2.2A11.6 11.6 0 0 1 12 21C5 21 1 12 1 12a21 21 0 0 1 5.2-6.6L2.1 3.5ZM12 7c3.9 0 7.2 2.2 9 5a19.7 19.7 0 0 1-3.8 4.6l-2-2A3.9 3.9 0 0 0 12 8.1l-2-2A10.8 10.8 0 0 1 12 7Zm0 4a1.9 1.9 0 0 1 1.9 1.9c0 .2 0 .4-.1.6l-2.4-2.4.6-.1Zm-6.9 1c1.1 2 3.5 5 6.9 5 1 0 1.9-.2 2.7-.5l-1.3-1.3a3.9 3.9 0 0 1-5-5L6.2 8A19.7 19.7 0 0 0 3 12Z"
+          />
+        </svg>
+      ) : (
+        /* eye */
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 5c7 0 11 7 11 7s-4 7-11 7S1 12 1 12s4-7 11-7Zm0 2c-4.9 0-8.2 4.1-9 5a12 12 0 0 0 18 0c-.8-.9-4.1-5-9-5Zm0 2.5A2.5 2.5 0 1 1 9.5 12 2.5 2.5 0 0 1 12 9.5Z"
+          />
+        </svg>
+      )}
+    </button>
+  </div>
+</div>
+
 
           {/* error box removed since we use toasts */}
 
@@ -97,13 +117,6 @@ export default function Login() {
             )}
           </button>
 
-          <div className="alert alert-info mt-4">
-            <span className="alert-icon">ℹ️</span>
-            <div className="alert-content">
-              <div className="alert-title">Admin Access Only</div>
-              Accounts are created by administrators. Contact your admin if you need access.
-            </div>
-          </div>
         </form>
       </div>
     </div>

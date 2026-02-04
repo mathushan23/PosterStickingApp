@@ -1223,10 +1223,17 @@ html, body {
   /* Optional: limit address height */
   .table td:first-child .text-muted.text-sm {
     display: -webkit-box;
+
+    /* Standard (future-proof) */
+    line-clamp: 3;
+
+    /* WebKit (Chrome, Safari, Edge, Android) */
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
+
     overflow: hidden;
   }
+
 
   /* Mobile toggle smaller and not blocking too much */
   .mobile-toggle {
@@ -1236,4 +1243,38 @@ html, body {
     bottom: 14px;
     font-size: 1.35rem;
   }
+}
+
+/* ////////////////////////////// Password input eye icon ///////////////////////////////////  */
+
+/* Password input with eye icon */
+.password-field {
+  position: relative;
+}
+
+.password-field .form-input {
+  padding-right: 2.75rem; /* space for eye button */
+}
+
+.password-eye {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.password-eye:hover {
+  color: var(--primary);
+}
+
+.password-eye:focus {
+  outline: none;
 }
