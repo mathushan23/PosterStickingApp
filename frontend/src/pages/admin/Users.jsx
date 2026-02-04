@@ -8,6 +8,8 @@ export default function Users() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("success");
+  const nonAdminUsers = items.filter(u => u.role !== "admin");
+
 
   async function load() {
     const res = await api.get("/admin/users");
@@ -54,7 +56,10 @@ export default function Users() {
             <p className="page-subtitle">Create and manage user accounts</p>
           </div>
           <div className="top-bar-actions">
-            <span className="badge badge-info">{items.length} User{items.length !== 1 ? "s" : ""}</span>
+            <span className="badge badge-info">
+              {nonAdminUsers.length} User{nonAdminUsers.length !== 1 ? "s" : ""}
+            </span>
+
           </div>
         </div>
       </div>
@@ -121,7 +126,9 @@ export default function Users() {
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {items.map((u) => (
+                {nonAdminUsers.map((u) => (
+
+
                   <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 1rem", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", background: "var(--bg)" }}>
                     <div>
                       <div className="font-bold" style={{ fontSize: "0.9375rem" }}>{u.name}</div>
@@ -132,12 +139,15 @@ export default function Users() {
                       </div>
                     </div>
 
-                    <button
-                      className={`btn btn-sm ${u.is_active ? "btn-danger" : "btn-success"}`}
-                      onClick={() => toggleStatus(u.id, !!u.is_active)}
-                    >
-                      {u.is_active ? "Deactivate" : "Activate"}
-                    </button>
+                    {u.role !== "admin" && (
+                      <button
+                        className={`btn btn-sm ${u.is_active ? "btn-danger" : "btn-success"}`}
+                        onClick={() => toggleStatus(u.id, !!u.is_active)}
+                      >
+                        {u.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                    )}
+
                   </div>
                 ))}
               </div>
