@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
@@ -29,18 +30,41 @@ export default function Layout({ children, role = "user" }) {
   function handleLogout() {
     try {
       logout?.();
-    } catch {}
+    } catch { }
     navigate("/login");
   }
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
   return (
     <div className="app-layout">
+      {/* Mobile Menu Toggle */}
+      <button
+        className="mobile-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        {isSidebarOpen ? "✕" : "☰"}
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isSidebarOpen ? "mobile-open" : ""}`}>
         <div className="sidebar-header">
-          <Link to={isAdmin ? "/admin/dashboard" : "/user/dashboard"} className="sidebar-brand">
+          <Link
+            to={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
+            className="sidebar-brand"
+            onClick={() => setIsSidebarOpen(false)}
+          >
             <div className="sidebar-brand-icon">📋</div>
             <span>Poster Proof</span>
           </Link>
@@ -56,6 +80,7 @@ export default function Layout({ children, role = "user" }) {
                 key={item.path}
                 to={item.path}
                 className={`sidebar-link ${isActive(item.path) ? "active" : ""}`}
+                onClick={() => setIsSidebarOpen(false)}
               >
                 <span className="sidebar-link-icon">{item.icon}</span>
                 <span>{item.label}</span>
