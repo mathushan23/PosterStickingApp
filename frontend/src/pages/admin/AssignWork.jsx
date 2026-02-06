@@ -420,13 +420,13 @@ export default function AssignWork() {
           {loading ? "Assigning..." : "Assign Work"}
         </button>
 
-        <div className="alert alert-warning mt-4">
+        {/* <div className="alert alert-warning mt-4">
           <span className="alert-icon">⏱️</span>
           <div className="alert-content">
             <div className="alert-title">Cooldown Policy</div>
             Spots within <b>20 meters</b> can’t be reused until the <b>3 months</b> cooldown ends.
           </div>
-        </div>
+        </div> */}
       </div>
     </Layout>
   );

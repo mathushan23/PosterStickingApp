@@ -1,7 +1,6 @@
 const pool = require("../db");
 const path = require("path");
 const { addMonths } = require("../utils/date");
-const { haversineMetersSQL } = require("../utils/haversineSql");
 
 const MAX_IMAGE = 5 * 1024 * 1024;
 const MAX_VIDEO = 50 * 1024 * 1024;
@@ -10,19 +9,30 @@ const imageMimes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const videoMimes = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 
 const MAX_ASSIGN_DISTANCE_M = 20;
+const MAX_NEAR_DISTANCE_M = 20;
 
-function distanceMetersSQL() {
-  // distance between (lat1,lng1) and (lat2,lng2)
-  // params: lat1, lng1, lat2, lng2
-  return `
-    (6371000 * acos(
-      cos(radians(?)) * cos(radians(?)) *
-      cos(radians(?) - radians(?)) +
-      sin(radians(?)) * sin(radians(?))
-    ))
-  `;
+// ✅ JS Haversine (reliable, no SQL param confusion)
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) ** 2;
+
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// ✅ Extract "Colombo" from "... , Colombo District, ..."
+function extractDistrict(addressText) {
+  if (!addressText) return null;
+  return addressText.match(/,\s*([^,]+)\s+District\s*,/i)?.[1]?.trim() || null;
+}
 
 exports.submitProof = async (req, res) => {
   try {
@@ -48,20 +58,26 @@ exports.submitProof = async (req, res) => {
       if (imageMimes.has(mime)) {
         proof_type = "image";
         if (size > MAX_IMAGE) {
-          return res.status(400).json({ message: `Image ${file.originalname} is too large (>5MB)` });
+          return res
+            .status(400)
+            .json({ message: `Image ${file.originalname} is too large (>5MB)` });
         }
       } else if (videoMimes.has(mime)) {
         proof_type = "video";
         if (size > MAX_VIDEO) {
-          return res.status(400).json({ message: `Video ${file.originalname} is too large (>50MB)` });
+          return res
+            .status(400)
+            .json({ message: `Video ${file.originalname} is too large (>50MB)` });
         }
       } else {
-        return res.status(400).json({ message: `Invalid file type for ${file.originalname}` });
+        return res
+          .status(400)
+          .json({ message: `Invalid file type for ${file.originalname}` });
       }
 
       processedFiles.push({
         url: `/uploads/proofs/${file.filename}`,
-        type: proof_type,
+        type: proof_type, // "image" | "video"
         mime,
         size,
       });
@@ -70,6 +86,7 @@ exports.submitProof = async (req, res) => {
     const userId = req.user.id;
     const now = new Date();
     const assignmentId = assignment_id ? Number(assignment_id) : null;
+    const districtFromAddress = extractDistrict(addressText);
 
     const conn = await pool.getConnection();
     try {
@@ -91,6 +108,7 @@ exports.submitProof = async (req, res) => {
             sp.latitude AS spot_latitude,
             sp.longitude AS spot_longitude,
             sp.address_text,
+            sp.district,
             sp.last_stuck_at
           FROM spot_assignments a
           JOIN spots sp ON sp.id = a.spot_id
@@ -112,7 +130,7 @@ exports.submitProof = async (req, res) => {
           return res.status(409).json({ message: "This assignment is not active" });
         }
 
-        // optional cooldown check
+        // ✅ cooldown check
         if (a.last_stuck_at) {
           const next = addMonths(a.last_stuck_at, 3);
           if (now < next) {
@@ -124,34 +142,28 @@ exports.submitProof = async (req, res) => {
           }
         }
 
-        // ✅ distance check to the assigned spot ONLY
-        const distSql = haversineMetersSQL();
-
-        const [dRows] = await conn.query(
-          `
-          SELECT ${distSql} AS distance_m
-          FROM spots
-          WHERE id=?
-          LIMIT 1
-          `,
-          [lat, lng, lat, a.spot_id]
+        // ✅ distance check (JS)
+        const distanceM = haversineMeters(
+          lat,
+          lng,
+          Number(a.spot_latitude),
+          Number(a.spot_longitude)
         );
-
-        const distanceM = Number(dRows?.[0]?.distance_m);
 
         if (!Number.isFinite(distanceM)) {
           await conn.rollback();
-          return res.status(409).json({
-            message: "Unable to verify distance to assigned location. Please try again.",
-          });
+          return res
+            .status(409)
+            .json({ message: "Unable to verify distance. Please try again." });
         }
 
         if (distanceM > MAX_ASSIGN_DISTANCE_M) {
           await conn.rollback();
           return res.status(409).json({
-            message: "You are not at the assigned location. Please go to the assigned spot and try again.",
+            message:
+              "You are not at the assigned location. Please go to the assigned spot and try again.",
             allowed_distance_m: MAX_ASSIGN_DISTANCE_M,
-            distance_m: distanceM,
+            distance_m: Math.round(distanceM),
             assigned_spot: {
               spot_id: a.spot_id,
               latitude: a.spot_latitude,
@@ -165,36 +177,52 @@ exports.submitProof = async (req, res) => {
         // lock spotId to assignment spot
         spotId = a.spot_id;
 
+        // ✅ update spot (keep existing district if already set, otherwise set from address)
         await conn.query(
-          `UPDATE spots SET last_stuck_at=NOW(), last_stuck_by=?, address_text=? WHERE id=?`,
-          [userId, addressText || null, spotId]
+          `
+          UPDATE spots 
+          SET last_stuck_at=NOW(),
+              last_stuck_by=?,
+              address_text=?,
+              district=COALESCE(district, ?)
+          WHERE id=?
+          `,
+          [userId, addressText || null, districtFromAddress, spotId]
         );
       }
 
-
       // ======================================================
-      // ✅ NORMAL MODE: your old nearest-spot logic
+      // ✅ NORMAL MODE: nearest spot within 20m (JS distance)
       // ======================================================
       if (!assignmentId) {
-        const distSql = haversineMetersSQL();
-        const [near] = await conn.query(
-          `
-          SELECT 
-            id, latitude, longitude, last_stuck_at,
-            ${distSql} AS distance_m
-          FROM spots
-          HAVING distance_m <= 20
-          ORDER BY distance_m ASC
-          LIMIT 1
-          `,
-          [lat, lng, lat]
+        // read all spots (OK for small/medium data). If huge, optimize later.
+        const [spots] = await conn.query(
+          `SELECT id, latitude, longitude, last_stuck_at, district, address_text FROM spots`
         );
 
-        if (near.length) {
-          spotId = near[0].id;
+        let nearest = null;
 
-          if (near[0].last_stuck_at) {
-            const next = addMonths(near[0].last_stuck_at, 3);
+        for (const s of spots) {
+          const d = haversineMeters(
+            lat,
+            lng,
+            Number(s.latitude),
+            Number(s.longitude)
+          );
+
+          if (Number.isFinite(d) && d <= MAX_NEAR_DISTANCE_M) {
+            if (!nearest || d < nearest.distance_m) {
+              nearest = { ...s, distance_m: d };
+            }
+          }
+        }
+
+        if (nearest) {
+          spotId = nearest.id;
+
+          // ✅ cooldown check
+          if (nearest.last_stuck_at) {
+            const next = addMonths(nearest.last_stuck_at, 3);
             if (now < next) {
               await conn.rollback();
               return res.status(409).json({
@@ -205,14 +233,23 @@ exports.submitProof = async (req, res) => {
           }
 
           await conn.query(
-            `UPDATE spots SET last_stuck_at=NOW(), last_stuck_by=?, address_text=? WHERE id=?`,
-            [userId, addressText || null, spotId]
+            `
+            UPDATE spots
+            SET last_stuck_at=NOW(),
+                last_stuck_by=?,
+                address_text=?,
+                district=COALESCE(district, ?)
+            WHERE id=?
+            `,
+            [userId, addressText || null, districtFromAddress, spotId]
           );
         } else {
           const [spotIns] = await conn.query(
-            `INSERT INTO spots(latitude, longitude, address_text, last_stuck_at, last_stuck_by)
-             VALUES(?,?,?,NOW(),?)`,
-            [lat, lng, addressText || null, userId]
+            `
+            INSERT INTO spots(latitude, longitude, address_text, district, last_stuck_at, last_stuck_by)
+            VALUES(?,?,?,?,NOW(),?)
+            `,
+            [lat, lng, addressText || null, districtFromAddress, userId]
           );
           spotId = spotIns.insertId;
         }
@@ -221,14 +258,8 @@ exports.submitProof = async (req, res) => {
       // -----------------------------
       // Insert submission + proofs
       // -----------------------------
-      const hasImage = processedFiles.some((f) => f.type === "image");
-      const hasVideo = processedFiles.some((f) => f.type === "video");
-      let summaryType = "";
-      if (hasImage && hasVideo) summaryType = "IMAGE and VIDEO";
-      else if (hasVideo) summaryType = "VIDEOS";
-      else summaryType = "IMAGE";
-
       const primaryProof = processedFiles[0];
+      const proofType = primaryProof.type; // ✅ "image" | "video" (matches ENUM)
 
       const [subIns] = await conn.query(
         `
@@ -242,7 +273,7 @@ exports.submitProof = async (req, res) => {
           spotId,
           assignmentId,
           primaryProof.url,
-          summaryType,
+          proofType,
           primaryProof.mime,
           primaryProof.size,
           lat,
@@ -296,8 +327,6 @@ exports.submitProof = async (req, res) => {
   }
 };
 
-
-
 exports.mySubmissions = async (req, res) => {
   const userId = req.user.id;
 
@@ -307,9 +336,11 @@ exports.mySubmissions = async (req, res) => {
       s.id, s.submitted_at, s.proof_url, s.proof_type,
       s.submitted_latitude, s.submitted_longitude,
       s.spot_id, s.note,
+      s.assignment_id,
       sp.latitude as spot_latitude,
       sp.longitude as spot_longitude,
-      sp.address_text
+      sp.address_text,
+      sp.district
     FROM submissions s
     JOIN spots sp ON sp.id = s.spot_id
     WHERE s.user_id=?
@@ -322,14 +353,12 @@ exports.mySubmissions = async (req, res) => {
     return res.json({ submissions: [] });
   }
 
-  // Fetch all proofs for these submissions
-  const subIds = submissions.map(s => s.id);
+  const subIds = submissions.map((s) => s.id);
   const [proofs] = await pool.query(
     `SELECT * FROM submission_proofs WHERE submission_id IN (?)`,
     [subIds]
   );
 
-  // Group proofs by submission_id
   const proofsMap = proofs.reduce((acc, p) => {
     if (!acc[p.submission_id]) acc[p.submission_id] = [];
     acc[p.submission_id].push(p);
@@ -356,7 +385,8 @@ exports.myAssignments = async (req, res) => {
       s.id AS spot_id,
       s.latitude,
       s.longitude,
-      s.address_text
+      s.address_text,
+      s.district
     FROM spot_assignments a
     JOIN spots s ON s.id = a.spot_id
     WHERE a.user_id=? AND a.status='assigned'
@@ -367,5 +397,3 @@ exports.myAssignments = async (req, res) => {
 
   res.json({ assignments: rows });
 };
-
-

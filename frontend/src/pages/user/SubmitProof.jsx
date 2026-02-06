@@ -600,13 +600,7 @@ export default function SubmitProof() {
             {/* Main message display removed in favor of toasts */}
 
             {/* Notice */}
-            <div className="alert alert-warning">
-              <span className="alert-icon">⏱️</span>
-              <div className="alert-content">
-                <div className="alert-title">Cooldown Policy</div>
-                The same location (within 20 meters) can only be updated once every 3 months.
-              </div>
-            </div>
+
           </form>
         </div>
       </div>

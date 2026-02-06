@@ -109,3 +109,14 @@ ON DELETE SET NULL;
 
 CREATE INDEX idx_submissions_assignment ON submissions(assignment_id);
 
+ALTER TABLE spots ADD COLUMN district VARCHAR(60) NULL AFTER address_text;
+
+UPDATE spots
+SET district = TRIM(
+  SUBSTRING_INDEX(
+    SUBSTRING_INDEX(address_text, ' District', 1),
+    ',', -1
+  )
+)
+WHERE district IS NULL
+  AND address_text LIKE '% District%';

@@ -156,12 +156,33 @@ exports.listSpots = async (req, res) => {
   const [rows] = await pool.query(
     `
     SELECT 
-      sp.id, sp.latitude, sp.longitude, sp.address_text, sp.last_stuck_at,
-      sp.last_stuck_by, u.name as last_stuck_by_name, u.email as last_stuck_by_email,
-      (SELECT COUNT(*) FROM submissions s WHERE s.spot_id = sp.id) as submissions_count
+      sp.id,
+      sp.latitude,
+      sp.longitude,
+      sp.address_text,
+      sp.district,
+      sp.last_stuck_at,
+      sp.last_stuck_by,
+
+      u_last.name  AS last_stuck_by_name,
+      u_last.email AS last_stuck_by_email,
+
+      a.user_id AS assigned_user_id,
+      u_ass.name AS assigned_user_name,
+      u_ass.email AS assigned_user_email,
+
+      (SELECT COUNT(*) FROM submissions s WHERE s.spot_id = sp.id) AS submissions_count
+
     FROM spots sp
-    LEFT JOIN users u ON u.id = sp.last_stuck_by
-    ORDER BY sp.last_stuck_at DESC
+    LEFT JOIN users u_last ON u_last.id = sp.last_stuck_by
+
+    -- ✅ only the CURRENT active assignment
+    LEFT JOIN spot_assignments a 
+      ON a.spot_id = sp.id AND a.status = 'assigned'
+
+    LEFT JOIN users u_ass ON u_ass.id = a.user_id
+
+    ORDER BY sp.last_stuck_at DESC, sp.id DESC
     `
   );
 
@@ -174,6 +195,7 @@ exports.listSpots = async (req, res) => {
 
   return res.json({ spots: data });
 };
+
 
 exports.getSpotDetails = async (req, res) => {
   const id = Number(req.params.id);
@@ -232,26 +254,29 @@ exports.createSpot = async (req, res) => {
   const lng = Number(longitude);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return res.status(400).json({
-      message: "Valid latitude and longitude required",
-    });
+    return res.status(400).json({ message: "Valid latitude and longitude required" });
   }
+
+  const addr = (address_text || "").trim() || null;
+
+  // ✅ district extraction from address_text like "... , Colombo District, ..."
+  // Result: "Colombo"
+  const districtFromAddress = addr
+    ? (addr.match(/,\s*([^,]+)\s+District\s*,/i)?.[1] || null)
+    : null;
 
   const [ins] = await pool.query(
     `
-    INSERT INTO spots (latitude, longitude, address_text)
-    VALUES (?,?,?)
+    INSERT INTO spots (latitude, longitude, address_text, district)
+    VALUES (?,?,?,?)
     `,
-    [lat, lng, (address_text || "").trim() || null]
+    [lat, lng, addr, districtFromAddress]
   );
 
-  const [rows] = await pool.query(
-    "SELECT * FROM spots WHERE id=?",
-    [ins.insertId]
-  );
-
+  const [rows] = await pool.query("SELECT * FROM spots WHERE id=?", [ins.insertId]);
   return res.status(201).json({ spot: rows[0] });
 };
+
 
 // --------------------
 // Check spot availability (Admin)
@@ -287,16 +312,16 @@ exports.createSpot = async (req, res) => {
 
     const spot = rows[0];
 
-    if (spot.last_stuck_at) {
-      const next = addMonths(spot.last_stuck_at, 3);
-      if (new Date() < next) {
-        return res.status(409).json({
-          available: false,
-          message: "This location is in cooldown period",
-          next_available_date: next.toISOString(),
-        });
-      }
-    }
+    // if (spot.last_stuck_at) {
+    //   const next = addMonths(spot.last_stuck_at, 3);
+    //   if (new Date() < next) {
+    //     return res.status(409).json({
+    //       available: false,
+    //       message: "This location is in cooldown period",
+    //       next_available_date: next.toISOString(),
+    //     });
+    //   }
+    // }
 
     return res.json({
       available: true,
@@ -339,16 +364,16 @@ exports.assignSpot = async (req, res) => {
   }
 
   // ✅ cooldown check
-  const last = spotRows[0].last_stuck_at;
-  if (last) {
-    const next = addMonths(last, 3);
-    if (new Date() < next) {
-      return res.status(409).json({
-        message: "This spot is still in cooldown",
-        next_available_date: next.toISOString(),
-      });
-    }
-  }
+  // const last = spotRows[0].last_stuck_at;
+  // if (last) {
+  //   const next = addMonths(last, 3);
+  //   if (new Date() < next) {
+  //     return res.status(409).json({
+  //       message: "This spot is still in cooldown",
+  //       next_available_date: next.toISOString(),
+  //     });
+  //   }
+  // }
 
   // ✅ prevent duplicate active assignment
   const [active] = await pool.query(

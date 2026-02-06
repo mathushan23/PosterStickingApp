@@ -15,7 +15,7 @@ export default function UserDashboard() {
 
       <div className="content-area">
         {/* Stats Overview */}
-        <div className="grid grid-cols-3 mb-8">
+        {/* <div className="grid grid-cols-3 mb-8">
           <div className="stat-card">
             <div className="stat-icon">📏</div>
             <div className="stat-label">Matching Radius</div>
@@ -36,10 +36,10 @@ export default function UserDashboard() {
             <div className="stat-value">1 File</div>
             <p className="text-sm text-muted mt-2">Image or video required</p>
           </div>
-        </div>
+        </div> */}
 
         {/* Quick Start Guide */}
-        <div className="card mb-8">
+        {/* <div className="card mb-8">
           <div className="card-header">
             <h3 className="card-title">💡 Quick Start Guide</h3>
             <p className="card-description">Follow these steps to submit your proof</p>
@@ -107,7 +107,7 @@ export default function UserDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Action Cards */}
         <div className="grid grid-cols-2 gap-6">
@@ -132,7 +132,7 @@ export default function UserDashboard() {
             </div>
           </Link>
 
-          <Link to="/user/history" style={{ textDecoration: 'none' }}>
+          {/* <Link to="/user/history" style={{ textDecoration: 'none' }}>
             <div className="card">
               <div className="card-body">
                 <div className="flex items-start gap-4">
@@ -151,18 +151,18 @@ export default function UserDashboard() {
                 </div>
               </div>
             </div>
-          </Link>
+          </Link> */}
         </div>
 
         {/* Important Notice */}
-        <div className="alert alert-warning mt-8">
+        {/* <div className="alert alert-warning mt-8">
           <span className="alert-icon">⚠️</span>
           <div className="alert-content">
             <div className="alert-title">Cooldown Policy</div>
             The same location (within 20 meters) can only be updated once every 3 months. 
             If a recent submission exists, you'll see the next available date.
           </div>
-        </div>
+        </div> */}
       </div>
     </Layout>
   );

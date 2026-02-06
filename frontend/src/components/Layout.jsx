@@ -22,7 +22,7 @@ export default function Layout({ children, role = "user" }) {
     { icon: "🏠", label: "Dashboard", path: "/user/dashboard" },
     { icon: "📤", label: "Submit Proof", path: "/user/submit" },
     { icon: "🗺️", label: "Assigned Tasks", path: "/user/assignments" },
-    { icon: "📜", label: "My History", path: "/user/history" },
+   // { icon: "📜", label: "My History", path: "/user/history" },
   ];
 
   const navItems = isAdmin ? adminNav : userNav;
